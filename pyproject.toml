@@ -1,0 +1,24 @@
+[project]
+name = "aiopslab-quiet"
+version = "0.1.0"
+description = "Signal-explicitness measurement for AIOpsLab quiet failures"
+requires-python = ">=3.11,<3.13"
+dependencies = ["pydantic>=2.7"]
+
+# Cluster-side extras. Deliberately NOT required for the pure modules
+# (quiet.probe.{model,stats,score,calibrate}, quiet.harness.leak) so the
+# whole scoring pipeline is developable and testable on a laptop with no
+# cluster, no kubeconfig and no API keys.
+[project.optional-dependencies]
+cluster = ["requests>=2.31"]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["quiet*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
