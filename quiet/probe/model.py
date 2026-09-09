@@ -173,6 +173,58 @@ class ResourceStats(BaseModel):
     series: dict[str, SeriesStats] = Field(default_factory=dict)
 
 
+class SpanRecord(BaseModel):
+    """One span, kept with its start time so windows can be re-cut.
+
+    Storing spans individually rather than pre-binned is what makes the
+    offline window-length sweep possible: explicitness is a function of
+    fault size TIMES observation volume, so a single long capture can be
+    sliced into shorter windows afterwards at no cluster cost. A
+    histogram cannot be re-cut.
+    """
+
+    service: str
+    operation: str = ""
+    start_ms: float
+    duration_ms: float
+    has_error: bool = False
+
+
+class RawLogLine(BaseModel):
+    pod: str
+    #: RFC3339 timestamp as emitted by `kubectl logs --timestamps`, or
+    #: empty when the line carried none.
+    ts: str = ""
+    text: str
+
+
+class RawWindow(BaseModel):
+    """Verbatim capture, before any statistics are taken.
+
+    Written to disk alongside every run and NOT summarised on the way in.
+    One cluster session captures this once; parsing and scoring are then
+    developed and re-run on a laptop indefinitely, and a parser fix can
+    be applied retroactively to every historical run.
+    """
+
+    schema_version: int = SCHEMA_VERSION
+    spec: WindowSpec
+    #: `kubectl get events -o json` items, unmodified.
+    events: list[dict] = Field(default_factory=list)
+    #: Pod census at window open and close: pod -> container -> restartCount
+    pods_at_start: dict[str, dict[str, int]] = Field(default_factory=dict)
+    pods_at_end: dict[str, dict[str, int]] = Field(default_factory=dict)
+    #: Pods not Ready at window close.
+    not_ready_at_end: list[str] = Field(default_factory=list)
+    logs: list[RawLogLine] = Field(default_factory=list)
+    #: Pods whose logs hit the --tail cap, so their rates are biased.
+    truncated_pods: list[str] = Field(default_factory=list)
+    spans: list[SpanRecord] = Field(default_factory=list)
+    #: "<pod>|<metric>" -> [(unix_seconds, value), ...]
+    resource_series: dict[str, list[tuple[float, float]]] = Field(default_factory=dict)
+    collection_errors: list[str] = Field(default_factory=list)
+
+
 class WindowSnapshot(BaseModel):
     schema_version: int = SCHEMA_VERSION
     spec: WindowSpec
