@@ -79,6 +79,18 @@ def test_whole_pure_layer_together_stays_clean():
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
+def test_run_probe_imports_cleanly_despite_being_impure():
+    """run_probe drives a cluster, but its IMPORT must stay clean.
+
+    aiopslab is imported inside the functions that need it, so `--help`,
+    argument validation and unit tests all work on a laptop. A top-level
+    import would make the module unloadable anywhere without a kubeconfig
+    and a config.yml.
+    """
+    code, output = _import_in_subprocess("quiet.harness.run_probe")
+    assert code == 0, f"run_probe pulled in aiopslab at import time: {output}"
+
+
 def test_pure_layer_does_not_need_network_or_kube_client():
     """Neither requests nor the kubernetes client should be reachable
     from the scoring path; they belong to the cluster-side extras."""
