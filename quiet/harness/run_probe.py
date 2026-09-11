@@ -54,6 +54,9 @@ def ensure_env(kubectl) -> None:
     openebs-hostpath to be the default StorageClass changes provisioning
     for every workload that does not name one explicitly.
     """
+    from ..paths import ensure_importable
+
+    ensure_importable()
     from aiopslab.service.telemetry.prometheus import Prometheus
 
     _log("ensuring OpenEBS...")
@@ -84,6 +87,9 @@ def capture(
     # Imported here, not at module scope: importing aiopslab reads a
     # gitignored config.yml and loads a kubeconfig at import time, so a
     # top-level import would make this module unloadable on a laptop.
+    from ..paths import ensure_importable
+
+    ensure_importable()
     from aiopslab.orchestrator.problems.registry import ProblemRegistry
     from aiopslab.service.kubectl import KubeCtl
 
@@ -194,7 +200,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Capture a normal and a fault window. No agent, no cost."
     )
     parser.add_argument("problem_id")
-    parser.add_argument("--root", type=Path, default=Path("aiopslab-quiet/runs"))
+    parser.add_argument("--root", type=Path, default=Path("runs"))
     parser.add_argument("--replicate", type=int, default=1)
     parser.add_argument("--repeat", type=int, default=1,
                         help="consecutive replicates, numbered from --replicate")

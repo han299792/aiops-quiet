@@ -16,11 +16,9 @@ from __future__ import annotations
 
 import ast
 import json
-from pathlib import Path
-
 import pytest
 
-REPO = Path(__file__).resolve().parents[2]
+from quiet.paths import AIOPSLAB_ROOT as REPO  # the pinned submodule checkout
 REGISTRY = REPO / "aiopslab" / "orchestrator" / "problems" / "registry.py"
 PACKAGE = REPO / "aiopslab" / "orchestrator" / "problems" / "payment_failure_dose"
 FLAGD_JSON = (

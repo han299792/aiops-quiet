@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+
+# Raw telemetry is tens of MB per run and lives only on the machine that
+# captured it. Small artifacts (manifest/verdict/cost/session) are committed.
+runs/**/telemetry/
+runs/**/raw_*.json

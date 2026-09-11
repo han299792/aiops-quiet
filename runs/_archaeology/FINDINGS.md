@@ -74,7 +74,7 @@ cAdvisor + node-exporter + prometheus 자신뿐이고(`aiopslab/observer/prometh
 ## 남겨두는 이유
 
 고쳐서 쓰지 않고 그대로 둔다. 이 디렉토리는 결과물이 아니라 **증거**다.
-새 하네스는 `aiopslab-quiet/` 아래에 따로 쓴다.
+새 하네스는 이 레포(`aiops-quiet`)에 따로 쓴다.
 
 다만 재사용할 만한 것은 있다:
 

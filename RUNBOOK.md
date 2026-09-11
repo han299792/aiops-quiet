@@ -38,16 +38,25 @@ node-exporter DaemonSet이 더해진다. node-exporter가 남의 워크로드가
 ## B1. 환경 (20분)
 
 ```bash
-git clone --recurse-submodules https://github.com/han299792/AIOpsLab.git
-cd AIOpsLab && git checkout quiet-failures
-git submodule status          # 8038be6 여야 한다
+git clone --recurse-submodules https://github.com/han299792/aiops-quiet.git
+cd aiops-quiet
+git submodule status          # vendor/AIOpsLab 이 quiet-failures 커밋에 핀돼야 한다
 
-cp aiopslab/config.yml.example aiopslab/config.yml
-# k8s_host: kind   (kind면) / localhost (클러스터 위에서 직접 돌리면)
+# AIOpsLab 쪽 설정 (서브모듈 안)
+cp vendor/AIOpsLab/aiopslab/config.yml.example vendor/AIOpsLab/aiopslab/config.yml
+# k8s_host: kind  (kind면) / localhost (클러스터 위에서 직접 돌리면)
 
-poetry env use python3.11 && poetry install
-python -m venv aiopslab-quiet/.venv && aiopslab-quiet/.venv/bin/pip install -e "aiopslab-quiet[dev]"
-aiopslab-quiet/.venv/bin/python -m pytest aiopslab-quiet/tests -q   # 176 통과해야 함
+# 프레임워크 의존성
+cd vendor/AIOpsLab && poetry env use python3.11 && poetry install && cd ../..
+
+# 측정기 (별도 venv, 의존성 가볍다)
+python3.11 -m venv .venv && .venv/bin/pip install -e ".[dev]"
+.venv/bin/python -m pytest tests -q      # 176 통과해야 한다
+```
+
+이미 AIOpsLab 체크아웃이 있으면 서브모듈 대신 그걸 쓸 수 있다:
+```bash
+export AIOPSLAB_ROOT=/path/to/existing/AIOpsLab
 ```
 
 ## B2. 배포 경로만 먼저 검증 (30~60분)
@@ -55,11 +64,11 @@ aiopslab-quiet/.venv/bin/python -m pytest aiopslab-quiet/tests -q   # 176 통과
 **장애 주입을 빼고** 배포 경로만 확인한다. 실패했을 때 원인이 갈리지 않게.
 
 ```bash
-python -c "
+cd vendor/AIOpsLab && poetry run python -c "
 from aiopslab.orchestrator.problems.registry import ProblemRegistry
 p = ProblemRegistry().get_problem_instance('noop_detection_astronomy_shop-1')
 p.app.delete(); p.app.deploy()
-"
+" ; cd ../..
 kubectl get pods -n astronomy-shop
 ```
 
@@ -71,7 +80,7 @@ astronomy-shop은 파드가 많고 프론트엔드가 무겁다(1.5GB). 전부 R
 **이 한 줄이 B3와 B5를 대신한다.**
 
 ```bash
-aiopslab-quiet/.venv/bin/python -m quiet.harness.preflight --namespace astronomy-shop
+.venv/bin/python -m quiet.harness.preflight --namespace astronomy-shop
 ```
 
 확인하는 것: kubectl 컨텍스트 · 네임스페이스 · 전 파드 Ready · restart 0 ·
@@ -107,21 +116,21 @@ PREREG가 창 길이 확정을 여기까지 미뤄둔 이유가 이것이다.
 창을 **길게** 뜬다. 오프라인에서 잘라 짧은 창을 만들 수 있지만 그 반대는 안 된다.
 
 ```bash
-aiopslab-quiet/.venv/bin/python -m quiet.harness.run_probe \
+.venv/bin/python -m quiet.harness.run_probe \
     payment_dose_100-detection-1 \
     --window 1800 --warmup 300 --settle 90 \
-    --root aiopslab-quiet/runs
+    --root runs
 ```
 
 30분 창 × 2(정상·장애) + 워밍업 = 약 70분. preflight를 통과했다면 이제 기다리기만 하면 된다.
 
 출력 확인:
 ```bash
-ls aiopslab-quiet/runs/*payment_dose_100*/
+ls runs/*payment_dose_100*/
 # raw_normal.json  normal.json  raw_fault.json  fault.json  spec.json  run.json
 python -c "
 import json,glob
-for f in sorted(glob.glob('aiopslab-quiet/runs/*payment_dose_100*/raw_*.json')):
+for f in sorted(glob.glob('runs/*payment_dose_100*/raw_*.json')):
     d=json.load(open(f))
     print(f.split('/')[-1], 'spans:', len(d['spans']), 'logs:', len(d['logs']),
           'events:', len(d['events']), 'errors:', d['collection_errors'])
@@ -135,10 +144,10 @@ for f in sorted(glob.glob('aiopslab-quiet/runs/*payment_dose_100*/raw_*.json')):
 
 그다음 **fixture로 커밋한다** (`runs/**/raw_*.json` 은 gitignore이므로 복사해야 한다):
 ```bash
-mkdir -p aiopslab-quiet/tests/fixtures/real
-cp aiopslab-quiet/runs/*payment_dose_100*/raw_normal.json aiopslab-quiet/tests/fixtures/real/
-cp aiopslab-quiet/runs/*payment_dose_100*/raw_fault.json  aiopslab-quiet/tests/fixtures/real/
-git add -f aiopslab-quiet/tests/fixtures/real && git commit && git push
+mkdir -p tests/fixtures/real
+cp runs/*payment_dose_100*/raw_normal.json tests/fixtures/real/
+cp runs/*payment_dose_100*/raw_fault.json  tests/fixtures/real/
+git add -f tests/fixtures/real && git commit && git push
 ```
 
 ## B5. 캡처한 원본으로 값을 재확인 (선택)
@@ -147,7 +156,7 @@ B3의 preflight가 3분 표본으로 이미 같은 값을 냈다. 30분 캡처�
 같은 값을 더 긴 표본으로 다시 보고 싶으면:
 
 ```bash
-aiopslab-quiet/.venv/bin/python -m quiet.harness.preflight \
+.venv/bin/python -m quiet.harness.preflight \
     --namespace astronomy-shop --minutes 30
 ```
 
@@ -166,7 +175,7 @@ preflight의 3분 표본과 크게 다르면 **부하가 시간에 따라 흔들
   echo "scrape_interval: $(kubectl get cm prometheus-server -n observe -o jsonpath='{.data.prometheus\.yml}' | grep -m1 scrape_interval)"
   echo "images:"
   kubectl get pods -n astronomy-shop -o jsonpath='{range .items[*]}{range .status.containerStatuses[*]}  - {.imageID}{"\n"}{end}{end}' | sort -u
-} > aiopslab-quiet/env/versions.lock.yml
+} > env/versions.lock.yml
 ```
 
 **이미지는 태그가 아니라 digest로 기록한다.** `latest` 태그가 섞여 있으면

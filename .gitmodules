@@ -1,0 +1,3 @@
+[submodule "vendor/AIOpsLab"]
+	path = vendor/AIOpsLab
+	url = https://github.com/han299792/AIOpsLab.git

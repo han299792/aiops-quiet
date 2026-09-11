@@ -134,7 +134,7 @@ kubectl get events -n astronomy-shop                    # 주입 시각이 찍�
 즉 **벤치마크 점수의 일부가 추론이 아니라 정답 조회일 수 있다.**
 이건 추측이 아니라 액션 스페이스에서 바로 따라 나오는 사실이다.
 얼마나 자주 일어나는지는 이 프로젝트가 측정해서 숫자로 붙일 예정
-(`aiopslab-quiet/quiet/harness/leak.py`).
+(`quiet/harness/leak.py`).
 
 숫자가 나온 뒤에 이슈를 낸다. 숫자 없이 내면 "그럴 수도 있다"에 그친다.
 
