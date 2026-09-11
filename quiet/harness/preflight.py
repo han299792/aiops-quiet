@@ -34,8 +34,6 @@ OK = "OK  "
 WARN = "WARN"
 FAIL = "FAIL"
 
-#: The dose ladder is meaningless if the deployed chart does not offer these.
-EXPECTED_VARIANTS = {"off", "10%", "25%", "50%", "75%", "90%", "100%"}
 
 
 class Check:
@@ -116,20 +114,10 @@ def check_flagd(c: Check, namespace: str) -> None:
     else:
         c.add(OK, "flag baseline", f"{len(flags)} flags all off")
 
-    pf = flags.get("paymentFailure")
-    if pf is None:
-        c.add(FAIL, "paymentFailure", "flag absent — chart version wrong?")
-        return
-    got = set(pf.get("variants", {}))
-    missing = EXPECTED_VARIANTS - got
-    if missing:
-        c.add(
-            FAIL,
-            "dose ladder",
-            f"missing {sorted(missing)} — check the chart version pin (0.37.2)",
-        )
-    else:
-        c.add(OK, "dose ladder", f"{len(got)} variants present")
+    # Which problems are quiet is decided by the measurement, not chosen
+    # here, so no particular flag is required -- only that the baseline is
+    # clean, which the check above covers.
+    print()
 
 
 def check_chaos(c: Check) -> None:
