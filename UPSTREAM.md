@@ -22,15 +22,25 @@ microsoft/AIOpsLab 을 읽으면서 발견한 것들. 이 포크에서 이미 �
 | `loadGeneratorFloodHomepage` | 있음 | **없음** (`loadGeneratorTraffic` / `loadGeneratorVUs`로 대체) |
 | 새 플래그 | — | `emailMemoryLeak`, `failedReadinessProbe`, `intlShippingSlowdown` |
 
-→ **`astronomy_shop_loadgenerator_flood_homepage-{detection,localization}-1` 이
-현재 무조건 실패한다.** `OtelFaultInjector.inject_fault`가
-`ValueError: Feature flag 'loadGeneratorFloodHomepage' not found` 를 던진다.
+→ 따라서 **`astronomy_shop_loadgenerator_flood_homepage-{detection,localization}-1` 은
+지금 설치되는 차트에서 실행될 수 없다.** `OtelFaultInjector.inject_fault`는 플래그가
+ConfigMap에 없으면 `ValueError: Feature flag ... not found` 를 던진다.
 
-재현:
+**증거의 한계를 먼저 밝힌다.** 아래 세 단계는 각각 확인했다:
+1. 메타데이터에 `version` 키가 없다 — `git show 0e454bc:aiopslab/service/metadata/astronomy-shop.json`
+2. 원격 최신은 0.41.0이고 거기엔 그 플래그가 없다 — 저장소 `index.yaml`과
+   0.37.2 / 0.41.0 두 tarball의 `demo.flagd.json`을 직접 받아 비교
+3. 플래그가 없으면 주입기가 `ValueError`를 던진다 — `inject_otel.py` 코드
+
+**그러나 이 문제를 실제로 돌려서 실패를 관찰한 사람은 아직 없다.**
+연결 고리는 검증됐지만 끝점은 추론이다. 이슈를 낼 때 이 구분을 유지한다.
+
+재현 (클러스터 없이 되는 부분):
 ```bash
 helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
 helm show values open-telemetry/opentelemetry-demo | grep -c loadGeneratorFloodHomepage   # 0
 ```
+끝점까지 확인하려면 실제로 그 문제를 한 번 초기화해 `ValueError`를 캡처해야 한다.
 
 부수적으로, 핀이 없으면 어떤 결과도 시간이 지나면 재현되지 않는다.
 조용한 장애는 미묘해서 앱이 조금만 달라져도 "조용함"이 안 조용해질 수 있다.

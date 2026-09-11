@@ -47,7 +47,7 @@ cp aiopslab/config.yml.example aiopslab/config.yml
 
 poetry env use python3.11 && poetry install
 python -m venv aiopslab-quiet/.venv && aiopslab-quiet/.venv/bin/pip install -e "aiopslab-quiet[dev]"
-aiopslab-quiet/.venv/bin/python -m pytest aiopslab-quiet/tests -q   # 175 통과해야 함
+aiopslab-quiet/.venv/bin/python -m pytest aiopslab-quiet/tests -q   # 176 통과해야 함
 ```
 
 ## B2. 배포 경로만 먼저 검증 (30~60분)
@@ -66,20 +66,38 @@ kubectl get pods -n astronomy-shop
 astronomy-shop은 파드가 많고 프론트엔드가 무겁다(1.5GB). 전부 Ready가 될 때까지
 기다린다. 안 뜨면 자원 부족이 1순위 의심.
 
-## B3. ★ 차트 버전 확인 — 여기서 갈린다
+## B3. ★★ preflight — 캡처 전에 반드시. 2분
+
+**이 한 줄이 B3와 B5를 대신한다.**
 
 ```bash
-helm list -n astronomy-shop          # CHART 열이 opentelemetry-demo-0.37.2 여야 한다
-kubectl get cm flagd-config -n astronomy-shop -o json \
-  | python -c "import json,sys; d=json.load(sys.stdin); \
-    print(json.loads(d['data']['demo.flagd.json'])['flags']['paymentFailure']['variants'])"
+aiopslab-quiet/.venv/bin/python -m quiet.harness.preflight --namespace astronomy-shop
 ```
 
-**10%/25%/50%/75%/90%/100%/off 가 전부 보여야 한다.** 안 보이면 핀이 안 먹은 것이고
-용량 사다리가 성립하지 않으므로 여기서 멈추고 원인을 찾는다.
+확인하는 것: kubectl 컨텍스트 · 네임스페이스 · 전 파드 Ready · restart 0 ·
+**flagd 플래그가 전부 off**(이전 회차 누수 감지) · **용량 사다리 변이 7개 존재** ·
+잔존 chaos CR 0 · Jaeger 도달 · Prometheus 도달.
 
-(이 핀이 없으면 0.41.0이 설치되는데, 거기서는 `loadGeneratorFloodHomepage`가
-제거돼 업스트림 문제 2개가 아예 실행되지 않는다 — `UPSTREAM.md` A1 참조.)
+그리고 **`POWER.md`가 요구한 세 값을 같이 재준다** — 서비스별 분당 span,
+기저 에러율, payment span 중 charge 비율. 목표 span 수에 필요한 창 길이까지 계산해준다.
+
+`FAIL`이 하나라도 뜨면 **거기서 멈춘다.** 그대로 캡처를 시작하면 70분 뒤에 같은 사실을 알게 된다.
+
+흔한 FAIL과 원인:
+
+| FAIL | 원인 |
+|---|---|
+| `dose ladder missing [...]` | 차트 핀이 안 먹었다. `helm list -n astronomy-shop`의 CHART가 `opentelemetry-demo-0.37.2`인지 본다 |
+| `flag baseline not off: [...]` | 이전 회차의 플래그가 남았다. `recover_fault`가 실패했다는 뜻 |
+| `chaos CRs N left over` | Chaos Mesh 잔존물. 지우고 다시 |
+| `jaeger no endpoint` | 서비스 이름이 다르다. `kubectl get svc -n astronomy-shop \| grep -i jaeger` 로 확인하고 `collect.open_endpoints`에 추가 |
+| `zero spans` | 로드제너레이터가 안 돈다. 트래픽 없이 뜬 창은 모든 장애를 명시적으로 보이게 만든다 |
+
+### preflight 결과를 반영한다
+
+출력 마지막 절의 세 값을 **`POWER.md`에 적고** `python -m quiet.analysis.power`를
+다시 돌린다. 그다음 창 길이를 확정하고 **`PREREG.md` §11 개정 이력에 기록한다.**
+PREREG가 창 길이 확정을 여기까지 미뤄둔 이유가 이것이다.
 
 ## B4. ★★ 원본 한 번 뜨기 — 이 세션의 본론
 
@@ -95,7 +113,7 @@ aiopslab-quiet/.venv/bin/python -m quiet.harness.run_probe \
     --root aiopslab-quiet/runs
 ```
 
-30분 창 × 2(정상·장애) + 워밍업 = 약 70분. 그동안 B5를 읽어둔다.
+30분 창 × 2(정상·장애) + 워밍업 = 약 70분. preflight를 통과했다면 이제 기다리기만 하면 된다.
 
 출력 확인:
 ```bash
@@ -123,33 +141,19 @@ cp aiopslab-quiet/runs/*payment_dose_100*/raw_fault.json  aiopslab-quiet/tests/f
 git add -f aiopslab-quiet/tests/fixtures/real && git commit && git push
 ```
 
-## B5. ★ POWER.md가 요구한 세 값을 측정
+## B5. 캡처한 원본으로 값을 재확인 (선택)
 
-`POWER.md`의 결론: 곡선의 모양이 아직 모르는 두 파라미터에 달려 있고,
-**측정 전에 창 길이와 사다리를 확정하지 않는다.** 원본에서 바로 읽는다.
+B3의 preflight가 3분 표본으로 이미 같은 값을 냈다. 30분 캡처가 끝난 뒤
+같은 값을 더 긴 표본으로 다시 보고 싶으면:
 
 ```bash
-aiopslab-quiet/.venv/bin/python - <<'EOF'
-import json, collections
-raw = json.load(open("aiopslab-quiet/tests/fixtures/real/raw_normal.json"))
-spans = raw["spans"]
-minutes = 30.0
-by_svc = collections.Counter(s["service"] for s in spans)
-print("서비스별 분당 span:")
-for svc, n in by_svc.most_common(15):
-    print(f"  {svc:<28} {n/minutes:8.1f}/min   (창 전체 {n})")
-err = sum(s["has_error"] for s in spans)
-print(f"\n기저 에러율: {err/max(len(spans),1):.4%}   (POWER.md: 5% 넘으면 10% 용량이 묻힌다)")
-pay = [s for s in spans if s["service"] == "payment"]
-charge = [s for s in pay if "charge" in s["operation"].lower()]
-print(f"payment span {len(pay)} 중 charge {len(charge)} "
-      f"= charge_fraction {len(charge)/max(len(pay),1):.1%}")
-print("   (POWER.md: 무릎이 10~25% 사이. 25%면 10% 용량도 명시적, 5%면 100%도 조용)")
-EOF
+aiopslab-quiet/.venv/bin/python -m quiet.harness.preflight \
+    --namespace astronomy-shop --minutes 30
 ```
 
-이 세 값을 `POWER.md`에 적고 `python -m quiet.analysis.power`를 다시 돌린 뒤
-**창 길이와 사다리를 확정하고 `PREREG.md` §11에 기록한다.**
+preflight의 3분 표본과 크게 다르면 **부하가 시간에 따라 흔들린다는 뜻**이고,
+그러면 정상 창과 장애 창이 교환 가능하지 않아 홀드아웃 거짓양성률이 α를 넘는다.
+그 경우 워밍업을 늘린다.
 
 ## B6. versions.lock.yml
 
@@ -191,4 +195,4 @@ find ~ -path "*data/results/*.json" 2>/dev/null | head   # ★ 세션 JSON이 �
 - **에이전트를 돌리지 않는다.** 이 세션은 비용 $0이다.
 - **창을 짧게 뜨지 않는다.** 길게 떠서 오프라인에서 자른다.
 - **collection_errors를 무시하지 않는다.** 채널이 조용히 빠진다.
-- **차트 버전을 확인하기 전에 진행하지 않는다** (B3).
+- **preflight가 FAIL인 채로 진행하지 않는다** (B3). 70분 뒤에 같은 사실을 알게 된다.
