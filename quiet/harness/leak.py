@@ -68,14 +68,30 @@ ACTION_RULES: tuple[Rule, ...] = (
 )
 
 # What came back into the context. This is what actually leaks.
+#
+# CAREFUL: the flagd ConfigMap lists *every* flag with its description and
+# its variant, whichever one is armed. So "the flag name appeared" and
+# "the string defaultVariant appeared" are properties of reading the
+# ConfigMap at all, not of learning the answer -- the first version of
+# these rules matched `"defaultVariant": "off"` on the innocuous flag at
+# the top of the dump and reported a leak for it. That would have marked
+# every flagd read as a leak, including reads in the null arm where
+# nothing is armed, and collapsed the contrast the experiment rests on.
+#
+# The answer is specifically *a flag set to something other than off*.
 OBSERVATION_RULES: tuple[Rule, ...] = (
-    Rule(name="default_variant_value", family="observation", severity="direct",
-         pattern=r"\"?defaultVariant\"?\s*[:=]\s*\"?(off|on|\d+%|\d+sec)\"?"),
-    Rule(name="fault_flag_name", family="observation", severity="direct",
-         pattern=r"paymentFailure|kafkaQueueProblems|imageSlowLoad|cartFailure|adFailure|"
-                 r"productCatalogFailure|recommendationCacheFailure|paymentUnreachable"),
+    Rule(name="armed_variant", family="observation", severity="direct",
+         # No trailing \b: it would sit between `%` and `"`, two non-word
+         # characters, and never match the commonest value of all.
+         pattern=r"\"?defaultVariant\"?\s*[:=]\s*\"?(?!off)(\d+%|\d+sec|on(?![\w-]))"),
     Rule(name="chaos_manifest", family="observation", severity="direct",
          pattern=r"kind:\s*(Pod|Network|Stress|IO|HTTP|Kernel)Chaos"),
+    # Reading the ConfigMap and finding everything off is not the answer
+    # when a fault is armed -- but it *is* the answer in the null arm.
+    # Recorded as indirect here; scan_trace promotes it when no fault was
+    # injected.
+    Rule(name="flagd_dump", family="observation", severity="indirect",
+         pattern=r"\"?defaultVariant\"?\s*[:=]"),
 )
 
 ALL_RULES: tuple[Rule, ...] = ACTION_RULES + OBSERVATION_RULES
@@ -83,6 +99,24 @@ ALL_RULES: tuple[Rule, ...] = ACTION_RULES + OBSERVATION_RULES
 _ROLE_FAMILY: dict[str, Family] = {"assistant": "action", "env": "observation"}
 
 _EXCERPT_CHARS = 160
+
+
+class FaultSpec(BaseModel, frozen=True):
+    """What this run actually injected.
+
+    Needed because what counts as "the answer" depends on it. With a flag
+    armed, the answer is a non-off variant. In the null arm nothing is
+    armed, so the answer is the *absence* of one -- and an agent that
+    dumps the ConfigMap and sees everything off has read it just as
+    surely. Defaults to the null arm.
+    """
+
+    flag: str | None = None
+    chaos: bool = False
+
+    @property
+    def any(self) -> bool:
+        return bool(self.flag) or self.chaos
 
 
 class LeakHit(BaseModel):
@@ -119,14 +153,18 @@ def _excerpt(text: str, match: re.Match[str]) -> str:
     return text[start:end].replace("\n", " ").strip()
 
 
-def scan_trace(trace: list[dict]) -> LeakReport:
+def scan_trace(trace: list[dict], fault: FaultSpec | None = None) -> LeakReport:
     """Scan a session trace for answer leakage.
 
     ``trace`` items are ``{"role": ..., "content": ...}``. Roles other
     than ``assistant`` and ``env`` (``system``, ``user``) are skipped:
     the task description legitimately names the application and would
-    otherwise trip the flag-name rule.
+    otherwise trip the action rules.
+
+    ``fault`` says what was injected. Omitting it scores the trace as a
+    null-arm run, where a bare ConfigMap dump is itself the answer.
     """
+    fault = fault or FaultSpec()
     hits: list[LeakHit] = []
     first_leak: int | None = None
     submit_step: int | None = None
@@ -149,16 +187,22 @@ def scan_trace(trace: list[dict]) -> LeakReport:
             match = rule.compiled().search(content)
             if match is None:
                 continue
+            severity = rule.severity
+            # In the null arm there is no armed variant to find, so the
+            # ConfigMap dump is the whole answer.
+            if rule.name == "flagd_dump" and not fault.any:
+                severity = "direct"
+
             hits.append(
                 LeakHit(
                     step=step,
                     family=family,
                     rule=rule.name,
-                    severity=rule.severity,
+                    severity=severity,
                     excerpt=_excerpt(content, match),
                 )
             )
-            if family == "observation" and rule.severity == "direct" and first_leak is None:
+            if family == "observation" and severity == "direct" and first_leak is None:
                 first_leak = step
 
     leaked = first_leak is not None

@@ -32,7 +32,7 @@ from pathlib import Path
 
 from . import manifest
 from .budget import Budget, BudgetExceeded, BudgetLedger, Usage, load_pricing
-from .leak import blocks_action, scan_trace
+from .leak import FaultSpec, blocks_action, scan_trace
 from .rundir import RunDir, run_id
 
 #: PREREG 3.1. Quiet arms first, then the loud control, then the null.
@@ -295,6 +295,10 @@ def one_run(problem_id: str, *, arm: str, replicate: int, root: Path,
         ok, issues = verify_fault(kubectl, namespace, problem_id)
         if not ok:
             return _discard(rd, root, rid, issues, phase="fault")
+        # Positive record too, not only failures: PREREG 7.1 asks for
+        # evidence that the reset was verified, and "no file" is
+        # indistinguishable from "the check never ran".
+        rd.write("reset.json", {"ok": True, "phase": "passed", "problems": []})
 
         t0 = time.time()
         outcome = asyncio.run(_drive_agent(
@@ -308,13 +312,20 @@ def one_run(problem_id: str, *, arm: str, replicate: int, root: Path,
         orch.session.set_results(results)
         trace = orch.session.to_dict()
 
+        expect = EXPECT.get(problem_id, {})
+        leak = scan_trace(
+            trace["trace"],
+            FaultSpec(flag=expect.get("flag"), chaos=bool(expect.get("chaos"))),
+        )
+        usage = ledger.snapshot_for(rid)
+
         rd.write("session.json", trace)
-        rd.write("leak.json", scan_trace(trace["trace"]))
-        rd.write("usage.json", ledger.snapshot_for(rid))
+        rd.write("leak.json", leak)
+        rd.write("usage.json", usage)
         status = "ok"
         _log(f"  {results.get('Detection Accuracy')} | "
-             f"leaked={scan_trace(trace['trace']).leaked} | "
-             f"blocked={outcome['blocked_actions']} | ${ledger.snapshot_for(rid)['cost_usd']:.3f}")
+             f"leaked={leak.leaked} (step {leak.first_leak_step}) | "
+             f"blocked={outcome['blocked_actions']} | ${usage['cost_usd']:.3f}")
         return {"status": status, "run_id": rid, "results": results, **outcome}
 
     except BudgetExceeded:
