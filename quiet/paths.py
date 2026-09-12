@@ -56,4 +56,10 @@ def ensure_importable() -> Path:
         )
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
+    # `clients` is a top-level package inside the checkout, not under the
+    # `aiopslab` namespace, so importing clients.claude needs the checkout
+    # root on the path too -- adding only the parent is not enough.
+    os.environ["PYTHONPATH"] = os.pathsep.join(
+        p for p in (str(root), os.environ.get("PYTHONPATH", "")) if p
+    )
     return root
