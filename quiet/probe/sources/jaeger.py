@@ -39,6 +39,28 @@ def _get(base_url: str, path: str, params: dict[str, str | int], timeout: int = 
         raise JaegerError(f"GET {url} failed: {exc!r}") from exc
 
 
+#: Jaeger's API is not always at the root. The OpenTelemetry demo serves the
+#: UI and its API under /jaeger/ui, and the bare root returns the HTML app --
+#: which answers 200, so a status-code health check passes while every API
+#: call comes back as HTML.
+API_PREFIXES = ("", "/jaeger/ui", "/jaeger")
+
+
+def resolve_base(base_url: str) -> str:
+    """Return base_url with whatever prefix actually serves the JSON API."""
+    for prefix in API_PREFIXES:
+        try:
+            data = _get(base_url + prefix, "/api/services", {})
+        except JaegerError:
+            continue
+        if isinstance(data, dict) and "data" in data:
+            return base_url + prefix
+    raise JaegerError(
+        f"no Jaeger JSON API under {base_url} (tried {list(API_PREFIXES)}); "
+        "the root may be serving the UI"
+    )
+
+
 def list_services(base_url: str) -> list[str]:
     data = _get(base_url, "/api/services", {})
     return [s for s in (data.get("data") or []) if s and s != "jaeger-all-in-one"]

@@ -144,10 +144,13 @@ def open_endpoints(namespace: str) -> tuple[Endpoints, list[PortForward]]:
     # Ordered most-likely-first; the first one that answers /api/services wins.
     for svc in ("svc/jaeger-query", "svc/jaeger",
                 "svc/astronomy-shop-jaeger-query", "svc/jaeger-out"):
-        fwd = PortForward(svc, 16686, namespace, probe_path="/api/services")
+        fwd = PortForward(svc, 16686, namespace)
         try:
             fwd.__enter__()
-            endpoints.jaeger_base_url = fwd.base_url
+            # Resolve the API prefix rather than trusting a 200: the bare root
+            # serves the UI, so a status check alone finds a working port and
+            # a useless endpoint.
+            endpoints.jaeger_base_url = jaeger.resolve_base(fwd.base_url)
             forwards.append(fwd)
             break
         except Exception:  # noqa: BLE001 - try the next name
