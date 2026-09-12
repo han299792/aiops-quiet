@@ -59,6 +59,21 @@ python3.11 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 export AIOPSLAB_ROOT=/path/to/existing/AIOpsLab
 ```
 
+### 재실행 시 주의
+
+부트스트랩을 고쳤으면 **레포 사본을 다시 복사한 뒤** 돌린다:
+
+```bash
+cp /work/aiops-quiet/env/bootstrap-dind.sh /work/bootstrap.sh
+```
+
+`git pull`은 레포만 갱신한다. `/work/bootstrap.sh`는 처음 `kubectl cp`로 넣은
+사본이라 그대로 두면 **옛 스크립트가 돈다** — 한 번 이걸로 kind 클러스터를
+extraMounts 없이 재생성했다.
+
+그리고 `extraMounts`는 **클러스터 생성 시점에만** 적용된다. 마운트를 고쳤으면
+`kind delete cluster --name aiopslab` 후 다시 만들어야 한다.
+
 ## B2. 배포 경로만 먼저 검증 (30~60분)
 
 **장애 주입을 빼고** 배포 경로만 확인한다. 실패했을 때 원인이 갈리지 않게.
