@@ -9,8 +9,23 @@ dependencies = ["pydantic>=2.7"]
 # (quiet.probe.{model,stats,score,calibrate}, quiet.harness.leak) so the
 # whole scoring pipeline is developable and testable on a laptop with no
 # cluster, no kubeconfig and no API keys.
+#
+# `cluster` carries what AIOpsLab needs at import time, because the campaign
+# runner drives the framework in-process and therefore needs both worlds in
+# one interpreter. Several of these are imported at module scope regardless
+# of whether the feature is used -- wandb by aiopslab/session.py, openai by
+# the LLM judge even with qualitative_eval false, docker and paramiko by the
+# service layer -- so importing the problem registry pulls all of them.
+# vllm is an upstream dependency that neither builds here nor is needed.
 [project.optional-dependencies]
-cluster = ["requests>=2.31"]
+cluster = [
+    "kubernetes>=30",
+    "urllib3<2.6.0",          # the kubernetes client still calls getheaders()
+    "rich", "colorama", "pyyaml", "python-dotenv", "prompt-toolkit",
+    "prometheus-api-client", "tiktoken", "pandas", "requests",
+    "anthropic>=0.40",
+    "wandb", "openai", "docker", "paramiko",
+]
 dev = ["pytest>=8"]
 
 [build-system]

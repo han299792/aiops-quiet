@@ -89,7 +89,7 @@ git submodule status
 say "5. python environments"
 # The measuring instrument: light dependencies, its own venv.
 [ -d .venv ] || python3 -m venv .venv
-./.venv/bin/pip -q install -e ".[dev]"
+./.venv/bin/pip -q install -e ".[dev,cluster]"
 ./.venv/bin/python -m pytest tests -q 2>&1 | tail -3
 
 # The framework: heavy. vllm is a hard dependency upstream and does not build
