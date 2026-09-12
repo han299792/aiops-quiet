@@ -138,11 +138,68 @@ kubectl get events -n <ns>               # 주입 시각까지
 규칙은 `quiet/harness/leak.py`에 있고 테스트 16개가 고정한다.
 **실행 전에 커밋된 규칙만 쓴다** — 트레이스를 보고 규칙을 추가하면 그건 사후 조작이다.
 
-## 2.6 이건 AIOpsLab만의 문제가 아니다
+## 2.6 ★ 논문 자신의 측정이 이 가설을 지지한다
+
+원 논문(arXiv:2501.06706)을 받아 읽었다. 우리가 찾던 사전 확률이 거기 있다.
+
+**Figure 6 — 에이전트 전체 행동 중 종류별 비율:**
+
+| | ReAct | Flash |
+|---|---|---|
+| **K8S (셸/kubectl)** | **48.2%** | **58.1%** |
+| `get_logs` | 25.5% | 35.1% |
+| `get_metrics` | 5.8% | 1.3% |
+| `get_traces` | 4.1% | **0.0%** |
+
+**Table 5 — 셸 명령별 등장 횟수:** 가장 많이 쓴 명령이 **`cat`** (ReAct 30회).
+
+에이전트 행동의 **과반이 셸**이다. 그리고 Flash는 **추적을 한 번도 안 보고
+(`get_traces` 0.0%) detection 정확도 100%** (Table 4a)를 냈다.
+
+> **추적을 한 번도 안 본 에이전트가 장애 탐지를 100% 맞혔다면,
+> 무엇을 보고 맞힌 것인가.**
+
+논문은 이 질문을 하지 않는다. 자세한 인용과 선행 연구 대조는
+[6-RELATED.md](6-RELATED.md).
+
+## 2.7 ★ 파일럿 1회에서 실제로 일어났다
+
+2026-09-12, claude-opus-5, observe arm, payment_service_failure detection.
+에이전트가 한 행동 **전부**:
+
+```
+1  exec_shell("kubectl get pods -n astronomy-shop")
+2  exec_shell("kubectl get cm -n astronomy-shop | head -30")     ← 정답 위치를 찾는다
+3  exec_shell("kubectl get cm flagd-config -n astronomy-shop -o yaml | grep -A3 defaultVariant")
+4  submit("Yes")                                                 → 채점: Correct
+```
+
+step 3에 돌아온 것 (원문 그대로):
+
+```
+"paymentFailure": {
+  "description": "Fail payment service charge requests n%",
+--
+  "defaultVariant": "100%"
+},
+```
+
+**텔레메트리 호출 0회.** fault의 이름과 강도가 평문으로 들어왔고,
+추론할 것이 남아 있지 않았다. `leak.json`: `leaked=true`,
+`first_leak_step=7`, `submit_step=9`, `leak_censored=true`.
+
+**n=1이다. 이건 결과가 아니라 계측기가 작동한다는 증명이다.**
+
+## 2.8 이건 AIOpsLab만의 문제가 아니다
 
 에이전트에게 실제 환경을 조사할 자유를 주면서 그 환경에 정답을 심는 벤치마크는
 전부 같은 구조다. 이건 **에이전트 벤치마크의 일반적인 설계 함정**이고,
 AIOpsLab은 그게 눈에 보이는 사례다.
+
+SWE-bench에서 에이전트가 `git log --all`로 미래 커밋(그 이슈를 고친 바로 그
+커밋)을 읽는 것과 **구조적으로 같은 문제**다 —
+[SWE-bench#465](https://github.com/SWE-bench/SWE-bench/issues/465).
+대조와 차이는 [6-RELATED.md](6-RELATED.md) §6.2.
 
 그래서 결과가 어느 쪽으로 나오든 할 말이 있다 →
 [3-PREREG.md](3-PREREG.md) §8.

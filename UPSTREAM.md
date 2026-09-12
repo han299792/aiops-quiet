@@ -116,6 +116,96 @@ ConfigMap에 쓰이고 flagd는 기본값을 서빙해서 **아무 일도 안 �
 
 ---
 
+### A7. `exec_command`가 stderr를 정상 출력처럼 돌려준다 ★★
+
+`aiopslab/service/kubectl.py`:
+
+```python
+def exec_command(self, command, input_data=None, raise_on_error=False):
+    ...
+    except subprocess.CalledProcessError as e:
+        error_output = e.stderr.decode("utf-8") if e.stderr else ...
+        if raise_on_error:
+            raise RuntimeError(...)
+        return error_output        # ← 실패가 데이터로 돌아온다
+```
+
+기본값이 `raise_on_error=False`다. **실패한 명령이 예외 없이 에러 문구를
+문자열로 반환한다.** 호출부는 그걸 정상 출력으로 파싱한다.
+
+**이게 실제로 두 곳에서 잘못된 동작을 만들었다.**
+
+**(1) 프레임워크 자신의 fault injector가 원인을 잘못 말한다.**
+`generators/fault/inject_otel.py`는 이렇게 쓰여 있었다:
+
+```python
+try:
+    output = self.kubectl.exec_command(command)
+    configmap = json.loads(output)
+except subprocess.CalledProcessError:
+    raise ValueError(f"ConfigMap '{...}' not found in namespace '{...}'.")
+except json.JSONDecodeError:
+    raise ValueError(f"Error decoding JSON for ConfigMap '{...}'.")
+```
+
+`exec_command`가 절대 `CalledProcessError`를 올리지 않으므로 **첫 번째
+`except`는 도달 불가능한 죽은 코드다.** ConfigMap이 없으면 에러 문구가
+`json.loads`로 흘러가서 `"Error decoding JSON"`으로 보고된다.
+네임스페이스가 삭제된 상태에서 실제로 관측했다:
+
+```
+ValueError: Error decoding JSON for ConfigMap 'flagd-config'.
+```
+
+ConfigMap은 멀쩡했다. **없었을 뿐이다.**
+
+**(2) 우리 하네스가 깨끗한 회차를 오염됐다고 버렸다.**
+리셋 검사가 `kubectl get podchaos,... -A -o name`의 결과를 세었다.
+Chaos Mesh가 없는 클러스터에서 이 명령은 이렇게 답한다:
+
+```
+error: the server doesn't have a resource type "podchaos"
+```
+
+`.split()` 하면 정확히 **9 단어**다. → `"chaos CRs left over: 9"`.
+없는 CRD가 아홉 개의 유령 CR로 보고됐다.
+
+→ **에러 문구의 단어 수가 데이터로 집계됐다.**
+
+**왜 심각한가.** 이 API를 쓰는 모든 호출부가 같은 함정을 밟는다.
+출력을 파싱하면 잘못된 원인을 말하고, 참/거짓만 보면 실패를 성공으로 읽는다.
+그리고 **조용하다** — 스택 트레이스가 없으니 아무도 모른다.
+
+**제안.** 기본값을 `raise_on_error=True`로 뒤집는다. 호환이 걱정되면
+최소한 실패 시 반환값을 구분 가능한 타입으로 감싼다. 우리 포크에서는
+`inject_otel.py`를 `raise_on_error=True`로 고치고 "읽을 수 없음"과
+"있는데 형식이 깨짐"을 분리했다 (`ConfigMapMissing` vs `ValueError`).
+
+재현 (클러스터 필요, Chaos Mesh 없이):
+```python
+from aiopslab.service.kubectl import KubeCtl
+out = KubeCtl().exec_command("kubectl get podchaos -A -o name")
+print(repr(out))   # 예외가 아니라 에러 문구가 나온다
+print(len(out.split()))   # 9
+```
+
+---
+
+### A8. fault가 실제로 주입됐는지 아무도 확인하지 않는다
+
+`inject_fault`는 ConfigMap을 쓰고 deployment를 재시작한 뒤 끝난다.
+**주입이 no-op이어도 회차는 그대로 채점된다.** 멀쩡한 시스템을 두고
+에이전트가 "이상 없음"이라 답하면 *오답*으로 기록된다.
+
+A1(차트 버전 핀 없음)과 겹치면 특히 나쁘다: 플래그 이름이 바뀐 차트에서는
+주입이 실패하는데, 그 실패가 에이전트의 실력 문제로 계상된다.
+
+우리 하네스는 `verify_fault`로 주입 직후 armed 플래그를 확인하고,
+안 걸리면 그 회차를 **버린다**(N에 안 넣는다). 업스트림에도 같은 사후 조건이
+있어야 한다.
+
+---
+
 ## B. 아직 안 고침 (이슈 후보)
 
 ### B1. `exec_shell`이 정답을 그대로 읽을 수 있다 ★★
