@@ -1,7 +1,11 @@
 """Campaign-runner tests that need no cluster.
 
-`verify_clean` takes a kubectl-like object, so a fake one exercises every
-contamination path. The block hook and the resume rule are checked directly.
+The reset checks take a kubectl-like object, so a fake one exercises every
+path. The fake mirrors the *real* ``KubeCtl.exec_command`` contract: on
+failure it returns stderr as an ordinary string unless ``raise_on_error`` is
+set. The previous fake raised unconditionally, which is why a full green
+suite still let pilot 3 discard a clean run -- the fake was wrong about the
+one behaviour that mattered.
 """
 
 from __future__ import annotations
@@ -11,103 +15,137 @@ import json
 import pytest
 
 from quiet.harness.leak import blocks_action
-from quiet.harness.run_campaign import BLOCKED_MSG, PROBLEMS, verify_clean
+from quiet.harness.run_campaign import (
+    BLOCKED_MSG,
+    EXPECT,
+    PROBLEMS,
+    verify_fault,
+    verify_reset,
+)
+
+PAYMENT = "astronomy_shop_payment_service_failure-detection-1"
+PODKILL = "pod_kill_hotel_res-detection-1"
+NOOP = "noop_detection_astronomy_shop-1"
+
+NO_CHAOS_CRD = 'error: the server doesn\'t have a resource type "podchaos"'
 
 
 class FakeKubectl:
-    """Answers the three commands verify_clean issues."""
+    """Answers the commands the reset checks issue.
 
-    def __init__(self, pods=None, chaos="", flags=None, fail=None):
-        self._pods = pods if pods is not None else [self.pod("a")]
+    ``chaos`` and ``flags`` may be an ``Err`` to simulate a failing command.
+    """
+
+    class Err(str):
+        """stderr text that kubectl would have written."""
+
+    def __init__(self, chaos="", flags=None):
         self._chaos = chaos
         self._flags = flags
-        self._fail = fail or set()
 
-    @staticmethod
-    def pod(name, ready=True, restarts=0):
-        return {
-            "metadata": {"name": name},
-            "status": {"containerStatuses": [
-                {"name": "c", "ready": ready, "restartCount": restarts}
-            ]},
-        }
+    def _answer(self, value, raise_on_error):
+        if isinstance(value, FakeKubectl.Err):
+            if raise_on_error:
+                raise RuntimeError(f"Command failed\nError: {value}")
+            return str(value)  # the real contract: stderr comes back as data
+        return value
 
-    def exec_command(self, cmd: str) -> str:
-        if "get pods" in cmd:
-            if "pods" in self._fail:
-                raise RuntimeError("connection refused")
-            return json.dumps({"items": self._pods})
+    def exec_command(self, cmd: str, raise_on_error: bool = False) -> str:
         if "chaos" in cmd:
-            if "chaos" in self._fail:
-                raise RuntimeError("no chaos CRDs")
-            return self._chaos
+            return self._answer(self._chaos, raise_on_error)
         if "flagd-config" in cmd:
             if self._flags is None:
-                raise RuntimeError("configmap not found")
-            return json.dumps({"data": {"demo.flagd.json": json.dumps({"flags": self._flags})}})
+                return self._answer(
+                    FakeKubectl.Err('Error from server (NotFound): configmaps '
+                                    '"flagd-config" not found'),
+                    raise_on_error,
+                )
+            if isinstance(self._flags, FakeKubectl.Err):
+                return self._answer(self._flags, raise_on_error)
+            payload = json.dumps({"flags": self._flags})
+            return json.dumps({"data": {"demo.flagd.json": payload}})
         raise AssertionError(f"unexpected command: {cmd}")
 
 
-class TestVerifyClean:
-    def test_healthy_namespace_passes(self):
-        ok, issues = verify_clean(FakeKubectl(), "ns")
+class TestVerifyReset:
+    def test_clean_cluster_passes(self):
+        ok, issues = verify_reset(FakeKubectl())
         assert ok and issues == []
 
-    def test_empty_namespace_fails(self):
-        """An empty namespace means the app never deployed -- scoring that as
-        a clean baseline would make every fault look explicit."""
-        ok, issues = verify_clean(FakeKubectl(pods=[]), "ns")
-        assert not ok and "empty" in issues[0]
-
-    def test_unreachable_cluster_fails_closed(self):
-        ok, issues = verify_clean(FakeKubectl(fail={"pods"}), "ns")
-        assert not ok and "cannot list pods" in issues[0]
-
-    def test_not_ready_pod_fails(self):
-        k = FakeKubectl(pods=[FakeKubectl.pod("a"), FakeKubectl.pod("b", ready=False)])
-        ok, issues = verify_clean(k, "ns")
-        assert not ok and any("not ready: b" in i for i in issues)
-
-    def test_restart_count_fails(self):
-        """A baseline that is already churning contaminates the event channel."""
-        k = FakeKubectl(pods=[FakeKubectl.pod("a", restarts=2)])
-        ok, issues = verify_clean(k, "ns")
-        assert not ok and any("restarts=2" in i for i in issues)
+    def test_missing_chaos_crds_are_not_contamination(self):
+        """The pilot-3 regression. Chaos Mesh is not installed in the lab
+        cluster, and kubectl says so on stderr; the old check counted the
+        nine words of that sentence as nine leftover CRs."""
+        ok, issues = verify_reset(FakeKubectl(chaos=FakeKubectl.Err(NO_CHAOS_CRD)))
+        assert ok, issues
 
     def test_leftover_chaos_cr_fails(self):
         k = FakeKubectl(chaos="podchaos.chaos-mesh.org/pod-kill\n")
-        ok, issues = verify_clean(k, "ns")
-        assert not ok and any("chaos CRs" in i for i in issues)
+        ok, issues = verify_reset(k)
+        assert not ok and "chaos CRs left over: 1" in issues[0]
 
-    def test_flag_left_on_fails(self):
-        """The likeliest contamination: the previous run's recover_fault
-        silently failed and its feature flag is still set."""
+    def test_unreachable_cluster_fails_closed(self):
+        """A CRD that is absent is safe; an API server that will not answer
+        is not, and the two arrive as the same kind of failure."""
+        k = FakeKubectl(chaos=FakeKubectl.Err("Unable to connect to the server"))
+        ok, issues = verify_reset(k)
+        assert not ok and "cannot list chaos CRs" in issues[0]
+
+    def test_does_not_look_at_the_app_namespace(self):
+        """init_problem uninstalls and recreates it, so its prior contents
+        are not evidence -- checking them would discard every run after the
+        first."""
+        k = FakeKubectl(flags={"paymentFailure": {"defaultVariant": "100%"}})
+        ok, _ = verify_reset(k)
+        assert ok
+
+
+class TestVerifyFault:
+    def test_expected_flag_on_passes(self):
         k = FakeKubectl(flags={"paymentFailure": {"defaultVariant": "100%"},
                                "cartFailure": {"defaultVariant": "off"}})
-        ok, issues = verify_clean(k, "ns")
-        assert not ok
-        assert any("paymentFailure" in i for i in issues)
-        assert not any("cartFailure" in i for i in issues)
+        ok, issues = verify_fault(k, "ns", PAYMENT)
+        assert ok, issues
 
-    def test_all_flags_off_passes(self):
+    def test_silent_no_op_injection_is_caught(self):
+        """Nothing upstream checks that inject_fault landed. A healthy system
+        scored as an agent miss is the failure that would fake this result."""
         k = FakeKubectl(flags={"paymentFailure": {"defaultVariant": "off"}})
-        ok, issues = verify_clean(k, "ns")
-        assert ok, issues
+        ok, issues = verify_fault(k, "ns", PAYMENT)
+        assert not ok and "did not materialise" in issues[0]
 
-    def test_missing_optional_sources_are_not_failures(self):
-        """hotel-reservation has no flagd and a cluster may have no Chaos Mesh;
-        neither absence is contamination."""
-        ok, issues = verify_clean(FakeKubectl(fail={"chaos"}, flags=None), "ns")
-        assert ok, issues
+    def test_extra_flag_from_a_previous_run_fails(self):
+        k = FakeKubectl(flags={"paymentFailure": {"defaultVariant": "100%"},
+                               "imageSlowLoad": {"defaultVariant": "10sec"}})
+        ok, issues = verify_fault(k, "ns", PAYMENT)
+        assert not ok and any("imageSlowLoad" in i for i in issues)
 
-    def test_reports_every_problem_not_just_the_first(self):
-        k = FakeKubectl(
-            pods=[FakeKubectl.pod("a", ready=False, restarts=3)],
-            chaos="podchaos/x\n",
-            flags={"f": {"defaultVariant": "on"}},
+    def test_null_arm_requires_every_flag_off(self):
+        assert verify_fault(FakeKubectl(flags={}), "ns", NOOP)[0]
+        ok, issues = verify_fault(
+            FakeKubectl(flags={"paymentFailure": {"defaultVariant": "10%"}}), "ns", NOOP
         )
-        ok, issues = verify_clean(k, "ns")
-        assert not ok and len(issues) >= 3
+        assert not ok and "unexpected flags on" in issues[0]
+
+    def test_chaos_problem_wants_a_cr_and_no_flagd(self):
+        """hotel-reservation has no flagd ConfigMap; that absence is not a
+        failure when no flag was expected."""
+        k = FakeKubectl(chaos="podchaos.chaos-mesh.org/pod-kill\n", flags=None)
+        assert verify_fault(k, "ns", PODKILL)[0]
+
+        ok, issues = verify_fault(FakeKubectl(chaos="", flags=None), "ns", PODKILL)
+        assert not ok and "expected a chaos CR" in issues[0]
+
+    def test_missing_flagd_fails_when_a_flag_was_expected(self):
+        ok, issues = verify_fault(FakeKubectl(flags=None), "ns", PAYMENT)
+        assert not ok and "cannot read flagd-config" in issues[0]
+
+    def test_unregistered_problem_fails_closed(self):
+        ok, issues = verify_fault(FakeKubectl(), "ns", "something-new-1")
+        assert not ok and "no expectation registered" in issues[0]
+
+    def test_every_planned_problem_has_an_expectation(self):
+        assert set(EXPECT) == set(PROBLEMS)
 
 
 class TestBlockHook:
