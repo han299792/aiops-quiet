@@ -62,14 +62,26 @@ else
   # Pinned node image: an unpinned kind image means a different Kubernetes
   # three weeks later, and quiet failures are subtle enough that the app
   # version matters.
+  # /run/udev is mounted for a reason: openebs-ndm, which the orchestrator
+  # installs on every problem init, hostPath-mounts it and stays in
+  # ContainerCreating forever without it ("hostPath type check failed:
+  # /run/udev is not a directory"). Upstream's kind-config carries the same
+  # mount; omitting it cost one pilot run.
+  mkdir -p /run/udev
   cat >/tmp/kind.yaml <<YAML
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
     image: ${K8S_IMAGE}
+    extraMounts:
+      - hostPath: /run/udev
+        containerPath: /run/udev
   - role: worker
     image: ${K8S_IMAGE}
+    extraMounts:
+      - hostPath: /run/udev
+        containerPath: /run/udev
 YAML
   kind create cluster --name "$CLUSTER" --config /tmp/kind.yaml --wait 300s
 fi
