@@ -353,7 +353,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--arm", choices=["observe", "block"], default="observe",
                     help="observe measures the natural rate; run it FIRST")
     ap.add_argument("--repeats", type=int, default=6)
-    ap.add_argument("--problems", nargs="*", default=None)
+    ap.add_argument("--problems", nargs="*", default=None,
+                    help="space- or comma-separated problem ids "
+                         "(default: the five in PROBLEMS)")
     ap.add_argument("--root", type=Path, default=Path("runs"))
     ap.add_argument("--max-steps", type=int, default=20)
     ap.add_argument("--model", default="claude-opus-5")
@@ -368,7 +370,22 @@ def main(argv: list[str] | None = None) -> int:
                     help="skip runs that already have run.json")
     args = ap.parse_args(argv)
 
-    problems = args.problems or PROBLEMS
+    # Accept commas as well as spaces. `--problems a,b` is the natural thing
+    # to type and argparse would otherwise take it as one long id, deploy an
+    # app for it and fail ninety seconds later with an unrelated message.
+    problems = [
+        pid
+        for chunk in (args.problems or PROBLEMS)
+        for pid in chunk.split(",")
+        if pid
+    ]
+    # An id with no EXPECT entry is discarded by verify_fault after the app
+    # is already up. Say so now instead.
+    unknown = [p for p in problems if p not in EXPECT]
+    if unknown:
+        _log(f"unknown problem ids (no EXPECT entry): {unknown}")
+        return 2
+
     args.root.mkdir(parents=True, exist_ok=True)
     ledger = BudgetLedger(
         args.root / "ledger.json",
