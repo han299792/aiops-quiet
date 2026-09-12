@@ -121,6 +121,9 @@ async def _drive_agent(orch, agent, session, max_steps: int, *, block: bool,
     Async so the whole loop runs under a single `asyncio.run`; calling
     `get_event_loop()` from sync code is deprecated and errors on 3.12+.
     """
+    from ..paths import ensure_importable
+
+    ensure_importable()
     from aiopslab.utils.status import SubmissionStatus
 
     instr = "Please take the next action"
@@ -170,6 +173,12 @@ async def _drive_agent(orch, agent, session, max_steps: int, *, block: bool,
 def one_run(problem_id: str, *, arm: str, replicate: int, root: Path,
             ledger: BudgetLedger, max_steps: int, model: str,
             agent_name: str) -> dict:
+    # Deferred, and only after the checkout is on the path: importing
+    # aiopslab reads a gitignored config.yml and loads a kubeconfig, so a
+    # module-scope import would make this file unloadable on a laptop.
+    from ..paths import ensure_importable
+
+    ensure_importable()
     from aiopslab.orchestrator import Orchestrator
     from aiopslab.service.kubectl import KubeCtl
     from clients.claude import ClaudeAgent
