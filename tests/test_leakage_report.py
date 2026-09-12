@@ -130,3 +130,31 @@ class TestReport:
         text = report(tmp_path)
         assert "2/2" in text          # correct over all runs
         assert "1/1" in text          # correct over clean runs only
+
+
+class TestBlockEfficacy:
+    """PREREG 3.2/8. The block is a command-string filter and is bypassable,
+    so whether it worked is a measurement, not an assumption."""
+
+    def test_a_leaky_block_suspends_the_H2_verdict(self, tmp_path):
+        for i in range(8):
+            make_run(tmp_path, f"o{i}", arm="observe", leaked=True, censored=True)
+            make_run(tmp_path, f"b{i}", arm="block", leaked=True, censored=True)
+        text = report(tmp_path)
+        assert "The block leaked" in text
+        assert "not judged" in text
+
+    def test_a_held_block_leaves_H2_interpretable(self, tmp_path):
+        for i in range(8):
+            make_run(tmp_path, f"o{i}", arm="observe", leaked=True, censored=True)
+            make_run(tmp_path, f"b{i}", arm="block", leaked=False)
+        text = report(tmp_path)
+        assert "The block held" in text
+        assert "The block leaked" not in text
+
+    def test_efficacy_is_reported_before_the_hypotheses(self, tmp_path):
+        for i in range(4):
+            make_run(tmp_path, f"o{i}", arm="observe")
+            make_run(tmp_path, f"b{i}", arm="block")
+        text = report(tmp_path)
+        assert text.index("block efficacy") < text.index("H2 accuracy")

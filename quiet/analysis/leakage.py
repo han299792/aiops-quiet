@@ -14,6 +14,10 @@ them. In particular it does not decide anything PREREG left open:
   runs where the answer arrived after the submission (or never).
 * **Discards are a reported number** (§7.1), not a silent retry.
 * **The null arm sets the false-positive rate** (§7.2).
+* **Block efficacy is measured, not assumed** (§3.2). The block is a
+  command-string filter and is bypassable, so if the block arm still
+  leaks, H2 and H3 are left unjudged: an unchanged accuracy could mean
+  the leak did not matter, or that the block did not work.
 """
 
 from __future__ import annotations
@@ -247,6 +251,26 @@ def report(root: Path) -> str:
         o, b = by_arm["observe"], by_arm["block"]
         of = [r for r in o if r.problem_id not in NULL_PROBLEMS]
         bf = [r for r in b if r.problem_id not in NULL_PROBLEMS]
+
+        # Did the block actually close the channel? PREREG 3.2 -- it is a
+        # command-string filter, so `kubectl get cm -n ns -o yaml` walks
+        # straight past it. Answer this before reading H2, because an
+        # unchanged accuracy means nothing if the answer still got through.
+        residual = rate(bf, lambda r: r.leaked)
+        blocked_total = sum(r.blocked for r in b)
+        w(f"**block efficacy** -- {blocked_total} actions refused; "
+          f"answer still reached the agent in {residual}")
+        w("")
+        leaky_block = residual.n and residual.lo > 0.0
+        if leaky_block:
+            w("> ★ **The block leaked.** PREREG 8: H2 and H3 are NOT judged.")
+            w("> An unchanged accuracy cannot be told apart from a block that")
+            w("> did not work. Report this instead: a command filter does not")
+            w("> close the answer channel.")
+        else:
+            w("> The block held; the H2/H3 contrasts below are interpretable.")
+        w("")
+
         for label, pred, oo, bb in (
             ("H1 leak rate", lambda r: r.leaked, of, bf),
             ("H2 accuracy", lambda r: r.correct is True, of, bf),
@@ -254,7 +278,10 @@ def report(root: Path) -> str:
             c = Comparison(label, rate(oo, pred), rate(bb, pred))
             w(f"**{label}** -- observe {c.observe} vs block {c.block}")
             w("")
-            w(f"> {c.verdict}")
+            if label.startswith("H2") and leaky_block:
+                w("> not judged: the block leaked (above)")
+            else:
+                w(f"> {c.verdict}")
             w("")
     else:
         w("## observe vs block")
