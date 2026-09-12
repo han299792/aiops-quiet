@@ -1,0 +1,9 @@
+{
+  "run_id": "2026-09-12T10-33-10Z__astronomy_shop_payment_service_failure-detection-1__observe__r01",
+  "problem_id": "astronomy_shop_payment_service_failure-detection-1",
+  "arm": "observe",
+  "replicate": 1,
+  "status": "aborted_dirty",
+  "error": null,
+  "finished_at": "2026-09-12 10:35:56.249320+00:00"
+}

@@ -1,0 +1,9 @@
+{
+  "run_id": "2026-09-12T11-06-17Z__noop_detection_astronomy_shop-1__observe__r01",
+  "problem_id": "noop_detection_astronomy_shop-1",
+  "arm": "observe",
+  "replicate": 1,
+  "status": "ok",
+  "error": null,
+  "finished_at": "2026-09-12 11:09:19.108079+00:00"
+}

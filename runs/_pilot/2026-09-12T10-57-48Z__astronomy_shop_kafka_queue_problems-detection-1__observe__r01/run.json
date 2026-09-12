@@ -1,0 +1,9 @@
+{
+  "run_id": "2026-09-12T10-57-48Z__astronomy_shop_kafka_queue_problems-detection-1__observe__r01",
+  "problem_id": "astronomy_shop_kafka_queue_problems-detection-1",
+  "arm": "observe",
+  "replicate": 1,
+  "status": "ok",
+  "error": null,
+  "finished_at": "2026-09-12 11:00:06.775768+00:00"
+}

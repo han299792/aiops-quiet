@@ -1,0 +1,9 @@
+{
+  "run_id": "2026-09-12T09-43-52Z__astronomy_shop_payment_service_failure-detection-1__observe__r01",
+  "problem_id": "astronomy_shop_payment_service_failure-detection-1",
+  "arm": "observe",
+  "replicate": 1,
+  "status": "error",
+  "error": "Exception(\"[red]Timeout: Not all pods in namespace 'astronomy-shop' reached the Ready state within 300 seconds.\")",
+  "finished_at": "2026-09-12 09:54:41.856115+00:00"
+}

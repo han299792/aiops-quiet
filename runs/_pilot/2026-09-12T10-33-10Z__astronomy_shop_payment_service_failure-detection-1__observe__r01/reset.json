@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "problems": [
+    "not ready: flagd-c66c57fb8-5ndsg",
+    "chaos CRs left over: 9",
+    "feature flags still on: ['paymentFailure']"
+  ]
+}

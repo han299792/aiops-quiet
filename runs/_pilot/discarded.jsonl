@@ -1,0 +1,1 @@
+{"run_id": "2026-09-12T10-33-10Z__astronomy_shop_payment_service_failure-detection-1__observe__r01", "problems": ["not ready: flagd-c66c57fb8-5ndsg", "chaos CRs left over: 9", "feature flags still on: ['paymentFailure']"], "ts": "2026-09-12T10:35:19.907105+00:00"}

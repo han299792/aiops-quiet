@@ -1,0 +1,15 @@
+{
+  "run_id": "2026-09-12T11-02-30Z__pod_kill_hotel_res-detection-1__observe__r01",
+  "calls": 2,
+  "usage": {
+    "model": "claude-opus-5",
+    "input_tokens": 4,
+    "output_tokens": 52,
+    "cache_read_tokens": 802,
+    "cache_write_tokens": 2044
+  },
+  "cost_usd": 0.014496000000000002,
+  "pricing_version": "anthropic-2026-06-24",
+  "campaign_spent_usd": 0.08254475,
+  "campaign_remaining_usd": 31.91745525
+}
