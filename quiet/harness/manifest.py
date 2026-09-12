@@ -21,6 +21,20 @@ from pathlib import Path
 from ..paths import aiopslab_root
 
 
+def _tracked_dirty(cwd) -> bool:
+    """Are *committed* files modified? Untracked ones do not count.
+
+    `git status --porcelain` lists untracked files too, and the campaign
+    writes its results into `runs/` inside this repo -- so every run after
+    the first reported "code was uncommitted at run time". A check that
+    fires on every run is not a check: it trains the reader to ignore the
+    one time the code really was uncommitted.
+
+    Untracked files are still counted, separately, under `quiet_untracked`.
+    """
+    return bool(_sh("git diff --stat HEAD", cwd=cwd))
+
+
 def _sh(cmd: str, cwd: Path | None = None) -> str:
     try:
         p = subprocess.run(
@@ -71,9 +85,11 @@ def build(
         "namespace": namespace,
         # --- code ---
         "quiet_sha": _sh("git rev-parse HEAD", cwd=repo),
-        "quiet_dirty": bool(_sh("git status --porcelain", cwd=repo)),
+        "quiet_dirty": _tracked_dirty(repo),
+        "quiet_untracked": len(_sh("git ls-files --others --exclude-standard",
+                                   cwd=repo).splitlines()),
         "aiopslab_sha": _sh("git rev-parse HEAD", cwd=ail),
-        "aiopslab_dirty": bool(_sh("git status --porcelain", cwd=ail)),
+        "aiopslab_dirty": _tracked_dirty(ail),
         "aiopslab_submodules": _sh("git submodule status", cwd=ail),
         # --- environment ---
         "k8s_version": _sh("kubectl version -o json"),

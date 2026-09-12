@@ -216,13 +216,20 @@ async def _drive_agent(orch, agent, session, max_steps: int, *, block: bool,
                            "cache_read_tokens", "cache_write_tokens")})
 
         # ---- the block arm's only intervention ----
+        #
+        # `ask_env` records its own {"role": "env"} entry, so adding one here
+        # too duplicated every observation: the observe pilot's four turns
+        # produced four assistant entries and *eight* env entries, and each
+        # leak appeared twice in leak.json. The blocked branch never reaches
+        # ask_env, so it recorded once -- the two arms had different trace
+        # shapes, which also made the module docstring's claim of
+        # byte-compatibility with upstream's session JSON untrue.
         if block and blocks_action(action):
             blocked += 1
             env_response = BLOCKED_MSG
+            session.add({"role": "env", "content": env_response})
         else:
-            env_response = await orch.ask_env(action)
-
-        session.add({"role": "env", "content": str(env_response)})
+            env_response = await orch.ask_env(action)  # records the entry
         if env_response == SubmissionStatus.VALID_SUBMISSION:
             final = env_response
             break
