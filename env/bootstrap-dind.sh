@@ -95,9 +95,15 @@ say "5. python environments"
 # The framework: heavy. vllm is a hard dependency upstream and does not build
 # here, so install what is actually needed rather than the whole lock file.
 [ -d vendor/AIOpsLab/.venv ] || python3 -m venv vendor/AIOpsLab/.venv
+# The list is longer than it looks it should be because several of these are
+# imported unconditionally at module scope regardless of whether the feature is
+# used: wandb by aiopslab/session.py, openai by evaluators/qualitative.py (the
+# LLM judge, even with qualitative_eval false), docker and paramiko by the
+# service layer. Importing the problem registry pulls all of them.
 vendor/AIOpsLab/.venv/bin/pip -q install \
   kubernetes "urllib3<2.6.0" rich colorama pyyaml python-dotenv \
-  prometheus-api-client tiktoken anthropic pandas requests
+  prometheus-api-client tiktoken anthropic pandas requests \
+  wandb openai prompt-toolkit docker paramiko
 
 say "6. AIOpsLab config"
 cd vendor/AIOpsLab

@@ -259,9 +259,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--root", type=Path, default=Path("runs"))
     ap.add_argument("--max-steps", type=int, default=20)
     ap.add_argument("--model", default="claude-opus-5")
-    ap.add_argument("--budget", type=float, default=40.0)
-    ap.add_argument("--reserve", type=float, default=1.0,
-                    help="assumed cost of one run until measured")
+    # KRW 50,000 at ~1,400/USD is about $35; $32 leaves headroom for a run
+    # that overruns before preflight can stop the next one.
+    ap.add_argument("--budget", type=float, default=32.0,
+                    help="hard cap in USD (default 32 ~= KRW 50,000)")
+    ap.add_argument("--reserve", type=float, default=1.5,
+                    help="assumed cost of one run until measured; the pilot "
+                         "replaces this with the observed mean")
     ap.add_argument("--resume", action="store_true",
                     help="skip runs that already have run.json")
     args = ap.parse_args(argv)
