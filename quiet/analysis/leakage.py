@@ -47,7 +47,7 @@ class Run:
     leaked: bool
     intent_only: bool
     censored: bool
-    steps: int | None
+    turns: int | None
     cost_usd: float
     blocked: int
 
@@ -86,7 +86,9 @@ def load(root: Path) -> tuple[list[Run], list[dict]]:
             leaked=bool(leak.get("leaked")),
             intent_only=bool(leak.get("intent_only")),
             censored=bool(leak.get("leak_censored")),
-            steps=leak.get("submit_step"),
+            # Agent turns, not the trace index of the submission: each turn
+            # leaves three trace entries, so submit_step 9 is four turns.
+            turns=leak.get("turns"),
             cost_usd=float(usage.get("cost_usd", 0.0)),
             blocked=int(marker.get("blocked_actions") or 0),
         ))
@@ -299,15 +301,15 @@ def report(root: Path) -> str:
     # -- per problem -------------------------------------------------------
     w("## per problem")
     w("")
-    w("| problem | arm | n | leaked | correct | median step | $/run |")
+    w("| problem | arm | n | leaked | correct | median turns | $/run |")
     w("|---|---|---:|---|---|---:|---:|")
     for pid in sorted({r.problem_id for r in runs}):
         for a in arms:
             rs = [r for r in runs if r.problem_id == pid and r.arm == a]
             if not rs:
                 continue
-            steps = sorted(r.steps for r in rs if r.steps is not None)
-            med = steps[len(steps) // 2] if steps else None
+            turns = sorted(r.turns for r in rs if r.turns)
+            med = turns[len(turns) // 2] if turns else None
             w(f"| {pid} | {a} | {len(rs)} | {rate(rs, lambda r: r.leaked)} "
               f"| {rate(rs, lambda r: r.correct is True)} "
               f"| {med if med is not None else '-'} "

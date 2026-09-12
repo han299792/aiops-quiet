@@ -269,6 +269,7 @@ def one_run(problem_id: str, *, arm: str, replicate: int, root: Path,
 
     status, error = "error", None
     orch = None
+    blocked_actions = 0
     try:
         ledger.preflight()
 
@@ -305,6 +306,7 @@ def one_run(problem_id: str, *, arm: str, replicate: int, root: Path,
             orch, agent, orch.session, max_steps,
             block=(arm == "block"), ledger=ledger, rid=rid, model=model))
         duration = time.time() - t0
+        blocked_actions = outcome["blocked_actions"]
 
         results = orch.session.problem.eval(
             orch.session.solution, orch.session.history, duration
@@ -344,6 +346,9 @@ def one_run(problem_id: str, *, arm: str, replicate: int, root: Path,
         rd.write("run.json", {  # completion marker, written last
             "run_id": rid, "problem_id": problem_id, "arm": arm,
             "replicate": replicate, "status": status, "error": error,
+            # Persisted, not just returned: the report needs it to say
+            # whether the block arm's filter actually fired.
+            "blocked_actions": blocked_actions,
             "finished_at": datetime.now(timezone.utc),
         })
 

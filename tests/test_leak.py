@@ -256,3 +256,20 @@ class TestRealConfigMapDump:
             FaultSpec(chaos=True),
         )
         assert r.leaked
+
+
+class TestTurnCount:
+    def test_turns_are_agent_moves_not_trace_indices(self):
+        """Each turn leaves one assistant entry and two env entries, so the
+        pilot's four turns put submit at trace index 9. Reporting index 9 as
+        a step count would overstate the work by more than double."""
+        trace = []
+        for _ in range(4):
+            trace += [a('exec_shell("kubectl get pods")'), e("out"), e("more")]
+        trace[-3] = a('submit("Yes")')
+        r = scan_trace(trace, FaultSpec(flag="paymentFailure"))
+        assert r.turns == 4
+        assert r.submit_step == 9
+
+    def test_empty_trace_has_no_turns(self):
+        assert scan_trace([]).turns == 0

@@ -20,7 +20,7 @@ def make_run(root, rid, *, arm="observe", problem="astronomy_shop_payment_servic
              status="ok"):
     rd = RunDir.create(root, rid)
     rd.write("leak.json", {"leaked": leaked, "intent_only": False,
-                           "leak_censored": censored, "submit_step": submit,
+                           "leak_censored": censored, "submit_step": submit, "turns": 4,
                            "first_leak_step": 3 if leaked else None, "hits": []})
     rd.write("usage.json", {"cost_usd": cost})
     rd.write("session.json", {"results": {"Detection Accuracy":

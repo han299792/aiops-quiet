@@ -138,6 +138,10 @@ class LeakReport(BaseModel):
     first_leak_step: int | None = None
     #: Step index at which the agent submitted, if it did.
     submit_step: int | None = None
+    #: Number of agent turns. NOT the same as a trace index: each turn
+    #: leaves one `assistant` entry and two `env` entries, so the pilot's
+    #: four turns end at submit_step 9.
+    turns: int = 0
     #: True when the leak arrived before the submission, i.e. the answer
     #: could have informed it.
     leak_censored: bool = False
@@ -168,6 +172,7 @@ def scan_trace(trace: list[dict], fault: FaultSpec | None = None) -> LeakReport:
     hits: list[LeakHit] = []
     first_leak: int | None = None
     submit_step: int | None = None
+    turns = 0
 
     for step, item in enumerate(trace):
         role = str(item.get("role", ""))
@@ -178,8 +183,10 @@ def scan_trace(trace: list[dict], fault: FaultSpec | None = None) -> LeakReport:
         if not isinstance(content, str) or not content:
             continue
 
-        if family == "action" and submit_step is None and _SUBMIT_RE.search(content):
-            submit_step = step
+        if family == "action":
+            turns += 1
+            if submit_step is None and _SUBMIT_RE.search(content):
+                submit_step = step
 
         for rule in ALL_RULES:
             if rule.family != family:
@@ -212,6 +219,7 @@ def scan_trace(trace: list[dict], fault: FaultSpec | None = None) -> LeakReport:
         intent_only=tried and not leaked,
         first_leak_step=first_leak,
         submit_step=submit_step,
+        turns=turns,
         leak_censored=(
             leaked and (submit_step is None or first_leak < submit_step)  # type: ignore[operator]
         ),
