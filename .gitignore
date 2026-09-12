@@ -7,3 +7,11 @@ __pycache__/
 # captured it. Small artifacts (manifest/verdict/cost/session) are committed.
 runs/**/telemetry/
 runs/**/raw_*.json
+
+# API keys never enter the repo. The pod reads them from a Kubernetes
+# Secret; .env is only a fallback for a pod that was already running when
+# the secret was created and cannot be restarted without losing its kind
+# cluster.
+.env
+*.env
+!.env.example

@@ -36,6 +36,8 @@
 # Deliberately NOT sandbox-m1: that is the control plane and also the node the
 # operator sshes into.
 #
+#   kubectl create secret generic anthropic -n aiopslab-lab \
+#       --from-literal=api-key="$ANTHROPIC_API_KEY"     # before applying
 #   kubectl apply -f env/dind-pod.yaml
 #   kubectl exec -it -n aiopslab-lab aiopslab-lab -- bash
 #   # then: bash /work/bootstrap.sh   (see env/bootstrap-dind.sh)
@@ -76,6 +78,14 @@ spec:
         # this container, and setting it up costs a startup race.
         - name: DOCKER_TLS_CERTDIR
           value: ""
+        # optional: absent until the secret is created, so the pod still
+        # starts for the no-cost probe work.
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anthropic
+              key: api-key
+              optional: true
       args:
         - --storage-driver=overlay2
       resources:

@@ -138,27 +138,20 @@ def open_endpoints(namespace: str) -> tuple[Endpoints, list[PortForward]]:
     forwards: list[PortForward] = []
     endpoints = Endpoints()
 
-    jaeger_fwd = PortForward(
-        "svc/jaeger", 16686, namespace, probe_path="/api/services"
-    )
-    try:
-        jaeger_fwd.__enter__()
-        endpoints.jaeger_base_url = jaeger_fwd.base_url
-        forwards.append(jaeger_fwd)
-    except Exception:  # noqa: BLE001 - astronomy-shop names it differently
-        jaeger_fwd.close()
-
-    if endpoints.jaeger_base_url is None:
-        alt = PortForward(
-            "svc/astronomy-shop-jaeger-query", 16686, namespace,
-            probe_path="/api/services",
-        )
+    # Service naming varies by chart version and release name. Measured on
+    # opentelemetry-demo 0.37.2: the query service is `jaeger-query`, which
+    # neither of the names the upstream TraceAPI looks for would have found.
+    # Ordered most-likely-first; the first one that answers /api/services wins.
+    for svc in ("svc/jaeger-query", "svc/jaeger",
+                "svc/astronomy-shop-jaeger-query", "svc/jaeger-out"):
+        fwd = PortForward(svc, 16686, namespace, probe_path="/api/services")
         try:
-            alt.__enter__()
-            endpoints.jaeger_base_url = alt.base_url
-            forwards.append(alt)
-        except Exception:  # noqa: BLE001
-            alt.close()
+            fwd.__enter__()
+            endpoints.jaeger_base_url = fwd.base_url
+            forwards.append(fwd)
+            break
+        except Exception:  # noqa: BLE001 - try the next name
+            fwd.close()
 
     prom_fwd = PortForward(
         "svc/prometheus-server", 80, "observe", probe_path="/-/ready"
