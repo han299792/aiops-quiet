@@ -13,14 +13,20 @@ comparison. The Jaeger HTTP API itself takes absolute ``start`` and
 from __future__ import annotations
 
 import json
+import time
 import urllib.parse
 import urllib.request
 from datetime import datetime
 
 from ..model import SpanRecord
 
-#: Jaeger caps results per request; this is per service per window.
-DEFAULT_LIMIT = 20000
+#: Traces per service per window. Measured on the cluster: 200 traces of
+#: frontend-proxy is already ~2 MB and 2,000 is ~14 MB, so a large limit
+#: across twenty services drops the connection mid-response. Lower is not a
+#: loss of data so much as a bound on how much of a busy window one request
+#: tries to carry; fetch_spans reports when the cap is reached so a biased
+#: rate is visible rather than silent.
+DEFAULT_LIMIT = 400
 
 _ERROR_TAGS = {"error", "otel.status_code"}
 
@@ -29,14 +35,28 @@ class JaegerError(RuntimeError):
     pass
 
 
-def _get(base_url: str, path: str, params: dict[str, str | int], timeout: int = 60):
+def _get(base_url: str, path: str, params: dict[str, str | int],
+         timeout: int = 120, retries: int = 2):
+    """GET with retries.
+
+    A large trace response can drop the connection part-way
+    (RemoteDisconnected) even when the query is valid, so a transient
+    failure is retried before it is reported as missing data -- otherwise
+    the channel degrades to unusable for reasons that have nothing to do
+    with the telemetry.
+    """
     url = f"{base_url}{path}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode())
-    except Exception as exc:  # noqa: BLE001
-        raise JaegerError(f"GET {url} failed: {exc!r}") from exc
+    last: Exception | None = None
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode())
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+            if attempt < retries:
+                time.sleep(1.0 + attempt)
+    raise JaegerError(f"GET {url} failed after {retries + 1} tries: {last!r}") from last
 
 
 #: Jaeger's API is not always at the root. The OpenTelemetry demo serves the
