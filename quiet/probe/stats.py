@@ -175,4 +175,11 @@ def wilson_interval(successes: int, n: int, *, confidence: float = 0.95) -> tupl
     denom = 1.0 + z * z / n
     centre = (p + z * z / (2.0 * n)) / denom
     half = (z / denom) * math.sqrt(p * (1.0 - p) / n + z * z / (4.0 * n * n))
-    return max(0.0, centre - half), min(1.0, centre + half)
+
+    # At successes==0 the algebra cancels to exactly 0, but in floating point
+    # it lands a few ulps either side -- 0.0 on CPython 3.11, 2.8e-17 on 3.12.
+    # Snap the degenerate ends so a reported bound never reads as a tiny
+    # non-zero probability, and clamp so the interval cannot leave [0, 1].
+    lo = 0.0 if successes == 0 else max(0.0, centre - half)
+    hi = 1.0 if successes == n else min(1.0, centre + half)
+    return lo, hi

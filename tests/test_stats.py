@@ -167,7 +167,16 @@ class TestWilson:
         assert hi == pytest.approx(0.76, abs=0.02)
 
     def test_stays_inside_unit_interval_at_extremes(self):
-        assert wilson_interval(0, 10)[0] == 0.0
+        """The property is containment in [0, 1], not exact equality.
+
+        An earlier version asserted `== 0.0` and passed on CPython 3.11 while
+        failing on 3.12, where the same algebra lands on 2.8e-17. The bound is
+        now snapped at the degenerate ends, but the test checks the property
+        rather than the representation."""
+        for s, n in [(0, 10), (10, 10), (0, 1), (1, 1), (0, 1000), (7, 7)]:
+            lo, hi = wilson_interval(s, n)
+            assert 0.0 <= lo <= hi <= 1.0, (s, n, lo, hi)
+        assert wilson_interval(0, 10)[0] == 0.0, "no fault means no lower bound"
         assert wilson_interval(10, 10)[1] == 1.0
 
     def test_narrows_with_n(self):
