@@ -132,7 +132,7 @@ Error: INSTALLATION FAILED: cannot re-use a name that is still in use
 kubectl exec -it -n aiopslab-lab aiopslab-lab -- bash
 cd /work/aiops-quiet
 
-./.venv/bin/python -m pytest tests -q          # 249 통과해야 한다
+./.venv/bin/python -m pytest tests -q          # 250 통과해야 한다
 ./.venv/bin/python -m quiet.harness.preflight --namespace astronomy-shop
 ```
 
