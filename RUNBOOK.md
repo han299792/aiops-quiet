@@ -97,6 +97,19 @@ kubectl exec -it -n aiopslab-lab aiopslab-lab -- sh -c '
 
 **비용:** 세 번의 실패 모두 **$0.00**. 실패 격리와 회차 전 예산 검사가 설계대로 동작했다.
 
+### 무시해도 되는 것 하나
+
+```
+Error: INSTALLATION FAILED: cannot re-use a name that is still in use
+```
+
+`pod_kill` 회차마다 로그에 뜬다. 오케스트레이터가 Chaos Mesh를 **조건 없이**
+`helm install` 하기 때문이고, 이미 깔려 있으면 이 문구를 내고 그냥 진행한다.
+**회차 실패가 아니다.** `helm list -A`에 `chaos-mesh`가 `deployed`면 정상이다.
+
+로그를 훑을 때 진짜 실패와 헷갈리기 쉬워서 적어둔다 — 실제 실패는
+`FAILED:` 또는 `DISCARDED` 로 찍힌다.
+
 > ### 리셋 검사가 왜 틀렸었나 — 읽어둘 값어치가 있다
 > 1. **주입 *뒤에* 검사했다.** `init_problem`이 배포와 주입을 같이 하는데
 >    그 뒤에 "flagd 플래그가 켜져 있다 → 오염"이라고 판정했다. **방금 자기가
