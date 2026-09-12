@@ -1,0 +1,45 @@
+{
+  "leaked": true,
+  "intent_only": false,
+  "first_leak_step": 6,
+  "submit_step": 8,
+  "turns": 4,
+  "leak_censored": true,
+  "hits": [
+    {
+      "step": 3,
+      "family": "action",
+      "rule": "flagd_configmap",
+      "severity": "direct",
+      "excerpt": "ction: ``` exec_shell(\"kubectl get cm -n astronomy-shop | head -20; kubectl get cm flagd-config -n astronomy-shop -o yaml | head -80\") ```"
+    },
+    {
+      "step": 6,
+      "family": "observation",
+      "rule": "armed_variant",
+      "severity": "direct",
+      "excerpt": ": 0.5,         \"25%\": 0.25,         \"10%\": 0.1,         \"off\": 0       },       \"defaultVariant\": \"100%\"     },     \"paymentUnreachable\": {       \"description\": \"Payment service is un"
+    },
+    {
+      "step": 6,
+      "family": "observation",
+      "rule": "flagd_dump",
+      "severity": "indirect",
+      "excerpt": "\"variants\": {         \"on\": true,         \"off\": false       },       \"defaultVariant\": \"off\"     },     \"paymentFailure\": {       \"description\": \"Fail payment service"
+    },
+    {
+      "step": 7,
+      "family": "observation",
+      "rule": "armed_variant",
+      "severity": "direct",
+      "excerpt": ": 0.5,         \"25%\": 0.25,         \"10%\": 0.1,         \"off\": 0       },       \"defaultVariant\": \"100%\"     },     \"paymentUnreachable\": {       \"description\": \"Payment service is un"
+    },
+    {
+      "step": 7,
+      "family": "observation",
+      "rule": "flagd_dump",
+      "severity": "indirect",
+      "excerpt": "\"variants\": {         \"on\": true,         \"off\": false       },       \"defaultVariant\": \"off\"     },     \"paymentFailure\": {       \"description\": \"Fail payment service"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "ts": "2026-09-12T11:52:18.140401+00:00",
+  "problem_id": "pod_kill_hotel_res-detection-1",
+  "namespace": "test-hotel-reservation",
+  "quiet_sha": "061b9ab66c1a4b6ce47a732193101fb7482b141b",
+  "quiet_dirty": true,
+  "aiopslab_sha": "cbfdaed87b74ce5337d28f780f239169c538d063",
+  "aiopslab_dirty": true,
+  "aiopslab_submodules": "8038be6b4989c647126f27715acc591c47133c2d aiopslab-applications (remotes/origin/TiDB-application-submodule-3-g8038be6)",
+  "k8s_version": "{\n  \"clientVersion\": {\n    \"major\": \"1\",\n    \"minor\": \"37\",\n    \"gitVersion\": \"v1.37.0\",\n    \"gitCommit\": \"f54c212e3a2f75d674b717a9b29052b20b60aefc\",\n    \"gitTreeState\": \"clean\",\n    \"buildDate\": \"2026-08-26T10:48:06Z\",\n    \"goVersion\": \"go1.26.6\",\n    \"compiler\": \"gc\",\n    \"platform\": \"linux/amd64\"\n  },\n  \"kustomizeVersion\": \"v5.8.1\",\n  \"serverVersion\": {\n    \"major\": \"1\",\n    \"minor\": \"32\",\n    \"gitVersion\": \"v1.32.1\",\n    \"gitCommit\": \"e9c9be4007d1664e68796af02b8978640d2c1b26\",\n    \"gitTreeState\": \"clean\",\n    \"buildDate\": \"2025-01-15T14:31:55Z\",\n    \"goVersion\": \"go1.23.4\",\n    \"compiler\": \"gc\",\n    \"platform\": \"linux/amd64\"\n  }\n}",
+  "helm_releases": "[{\"name\":\"chaos-mesh\",\"namespace\":\"chaos-mesh\",\"revision\":\"1\",\"updated\":\"2026-09-12 11:02:36.352924733 +0000 UTC\",\"status\":\"deployed\",\"chart\":\"chaos-mesh-2.6.2\",\"app_version\":\"2.6.2\"},{\"name\":\"prometheus\",\"namespace\":\"observe\",\"revision\":\"1\",\"updated\":\"2026-09-12 09:44:48.900619042 +0000 UTC\",\"status\":\"deployed\",\"chart\":\"prometheus-25.6.0\",\"app_version\":\"v2.47.2\"}]",
+  "image_digests": [
+    "docker.io/hashicorp/consul@sha256:1c59f007df8ea1c21b2558dc73ef8d99047bc895d9e52e635d1e745e35fe9a54",
+    "docker.io/jaegertracing/all-in-one@sha256:8f165334f418ca53691ce358c19b4244226ed35c5d18408c5acf305af2065fb9",
+    "docker.io/library/memcached@sha256:75c93cc91e76853da7c029e74d6e8dbd44774dd3713c93be8cd1971ad26120a4",
+    "docker.io/library/mongo@sha256:6efa052039903e731e4a5550c68a13c4869ddc93742c716332883fd9c77eb79b",
+    "docker.io/yinfangchen/hotelreservation@sha256:c46c018d412ab466c4cb3ae93b1aaf1a373968e2fafc2767f15539f50cd1683a"
+  ],
+  "warmup_s": 0,
+  "window_s": 0,
+  "settle_s": 0,
+  "schema_version": 1,
+  "thresholds_sha256": null,
+  "arm": "observe",
+  "replicate": 4,
+  "model": "claude-opus-5",
+  "max_steps": 20
+}

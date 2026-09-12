@@ -1,0 +1,10 @@
+{
+  "run_id": "2026-09-12T13-49-30Z__pod_kill_hotel_res-detection-1__block__r06",
+  "problem_id": "pod_kill_hotel_res-detection-1",
+  "arm": "block",
+  "replicate": 6,
+  "status": "error",
+  "error": "BadRequestError(\"Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeyepFWrnLt1gRQspVb5i'}\")",
+  "blocked_actions": 0,
+  "finished_at": "2026-09-12 13:50:37.174308+00:00"
+}

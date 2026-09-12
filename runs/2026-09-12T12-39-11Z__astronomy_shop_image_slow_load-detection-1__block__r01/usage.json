@@ -1,0 +1,15 @@
+{
+  "run_id": "2026-09-12T12-39-11Z__astronomy_shop_image_slow_load-detection-1__block__r01",
+  "calls": 8,
+  "usage": {
+    "model": "claude-opus-5",
+    "input_tokens": 16,
+    "output_tokens": 644,
+    "cache_read_tokens": 25869,
+    "cache_write_tokens": 7427
+  },
+  "cost_usd": 0.07553325,
+  "pricing_version": "anthropic-2026-06-24",
+  "campaign_spent_usd": 1.88846625,
+  "campaign_remaining_usd": 30.11153375
+}

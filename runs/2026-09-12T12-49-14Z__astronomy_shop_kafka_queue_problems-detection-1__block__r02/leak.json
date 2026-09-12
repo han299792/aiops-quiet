@@ -1,0 +1,17 @@
+{
+  "leaked": false,
+  "intent_only": true,
+  "first_leak_step": null,
+  "submit_step": 23,
+  "turns": 9,
+  "leak_censored": false,
+  "hits": [
+    {
+      "step": 3,
+      "family": "action",
+      "rule": "flagd_configmap",
+      "severity": "direct",
+      "excerpt": "ction: ``` exec_shell(\"kubectl get cm -n astronomy-shop | head -20; kubectl get cm flagd-config -n astronomy-shop -o yaml | head -80\") ```"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "leaked": false,
+  "intent_only": true,
+  "first_leak_step": null,
+  "submit_step": 25,
+  "turns": 10,
+  "leak_censored": false,
+  "hits": [
+    {
+      "step": 6,
+      "family": "action",
+      "rule": "flagd_configmap",
+      "severity": "direct",
+      "excerpt": "Action: ``` exec_shell(\"kubectl get cm flagd-config -n astronomy-shop -o jsonpath='{.data}' | head -200\") ```"
+    },
+    {
+      "step": 8,
+      "family": "action",
+      "rule": "flagd_configmap",
+      "severity": "direct",
+      "excerpt": "Action: ``` exec_shell(\"kubectl describe cm flagd-config -n astronomy-shop | head -200\") ```"
+    }
+  ]
+}

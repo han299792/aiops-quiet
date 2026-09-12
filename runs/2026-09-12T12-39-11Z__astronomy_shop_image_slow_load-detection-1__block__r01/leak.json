@@ -1,0 +1,52 @@
+{
+  "leaked": true,
+  "intent_only": false,
+  "first_leak_step": 17,
+  "submit_step": 19,
+  "turns": 8,
+  "leak_censored": true,
+  "hits": [
+    {
+      "step": 3,
+      "family": "action",
+      "rule": "flagd_configmap",
+      "severity": "direct",
+      "excerpt": "ction: ``` exec_shell(\"kubectl get cm -n astronomy-shop | head -20; kubectl get cm flagd-config -n astronomy-shop -o yaml | head -80\") ```"
+    },
+    {
+      "step": 5,
+      "family": "action",
+      "rule": "flagd_workload",
+      "severity": "direct",
+      "excerpt": "Action: ``` exec_shell(\"kubectl get deploy flagd -n astronomy-shop -o yaml | grep -A30 'env\\\\|args'\") ```"
+    },
+    {
+      "step": 17,
+      "family": "observation",
+      "rule": "armed_variant",
+      "severity": "direct",
+      "excerpt": "{         \"10sec\": 10000,         \"5sec\": 5000,         \"off\": 0       },       \"defaultVariant\": \"10sec\"     }   } }2026-09-12T12:40:43.658Z\tinfo\tcmd/start.go:107\tflagd version: v0.11"
+    },
+    {
+      "step": 17,
+      "family": "observation",
+      "rule": "flagd_dump",
+      "severity": "indirect",
+      "excerpt": "D\",       \"variants\": {         \"on\": true,         \"off\": false       },       \"defaultVariant\": \"off\"     },     \"loadGeneratorFloodHomepage\": {       \"description\": \"Flood th"
+    },
+    {
+      "step": 18,
+      "family": "observation",
+      "rule": "armed_variant",
+      "severity": "direct",
+      "excerpt": "{         \"10sec\": 10000,         \"5sec\": 5000,         \"off\": 0       },       \"defaultVariant\": \"10sec\"     }   } }2026-09-12T12:40:43.658Z\tinfo\tcmd/start.go:107\tflagd version: v0.11"
+    },
+    {
+      "step": 18,
+      "family": "observation",
+      "rule": "flagd_dump",
+      "severity": "indirect",
+      "excerpt": "D\",       \"variants\": {         \"on\": true,         \"off\": false       },       \"defaultVariant\": \"off\"     },     \"loadGeneratorFloodHomepage\": {       \"description\": \"Flood th"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "run_id": "2026-09-12T13-10-08Z__noop_detection_astronomy_shop-1__block__r03",
+  "calls": 11,
+  "usage": {
+    "model": "claude-opus-5",
+    "input_tokens": 22,
+    "output_tokens": 1400,
+    "cache_read_tokens": 32497,
+    "cache_write_tokens": 5395
+  },
+  "cost_usd": 0.08507725,
+  "pricing_version": "anthropic-2026-06-24",
+  "campaign_spent_usd": 3.357468,
+  "campaign_remaining_usd": 28.642532
+}

@@ -1,0 +1,10 @@
+{
+  "run_id": "2026-09-12T12-54-50Z__pod_kill_hotel_res-detection-1__block__r02",
+  "problem_id": "pod_kill_hotel_res-detection-1",
+  "arm": "block",
+  "replicate": 2,
+  "status": "ok",
+  "error": null,
+  "blocked_actions": 0,
+  "finished_at": "2026-09-12 12:56:36.496673+00:00"
+}

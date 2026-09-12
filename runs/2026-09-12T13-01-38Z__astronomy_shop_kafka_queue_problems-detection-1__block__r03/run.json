@@ -1,0 +1,10 @@
+{
+  "run_id": "2026-09-12T13-01-38Z__astronomy_shop_kafka_queue_problems-detection-1__block__r03",
+  "problem_id": "astronomy_shop_kafka_queue_problems-detection-1",
+  "arm": "block",
+  "replicate": 3,
+  "status": "ok",
+  "error": null,
+  "blocked_actions": 1,
+  "finished_at": "2026-09-12 13:05:50.844041+00:00"
+}

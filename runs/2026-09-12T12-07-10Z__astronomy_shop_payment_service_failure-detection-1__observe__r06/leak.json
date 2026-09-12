@@ -1,0 +1,66 @@
+{
+  "leaked": true,
+  "intent_only": false,
+  "first_leak_step": 7,
+  "submit_step": 9,
+  "turns": 4,
+  "leak_censored": true,
+  "hits": [
+    {
+      "step": 3,
+      "family": "action",
+      "rule": "flagd_configmap",
+      "severity": "direct",
+      "excerpt": "Action: ``` exec_shell(\"kubectl get cm -n astronomy-shop | head; kubectl get cm flagd-config -n astronomy-shop -o yaml | head -60\") ```"
+    },
+    {
+      "step": 4,
+      "family": "observation",
+      "rule": "flagd_dump",
+      "severity": "indirect",
+      "excerpt": "nts\": {             \"on\": true,             \"off\": false           },           \"defaultVariant\": \"off\"         },         \"recommendationCacheFailure\": {           \"description"
+    },
+    {
+      "step": 5,
+      "family": "observation",
+      "rule": "flagd_dump",
+      "severity": "indirect",
+      "excerpt": "nts\": {             \"on\": true,             \"off\": false           },           \"defaultVariant\": \"off\"         },         \"recommendationCacheFailure\": {           \"description"
+    },
+    {
+      "step": 6,
+      "family": "action",
+      "rule": "flagd_configmap",
+      "severity": "direct",
+      "excerpt": "Action: ``` exec_shell(\"kubectl get cm flagd-config -n astronomy-shop -o yaml | tail -60\") ```"
+    },
+    {
+      "step": 7,
+      "family": "observation",
+      "rule": "armed_variant",
+      "severity": "direct",
+      "excerpt": "25%\": 0.25,             \"10%\": 0.1,             \"off\": 0           },           \"defaultVariant\": \"100%\"         },         \"paymentUnreachable\": {           \"description\": \"Payment s"
+    },
+    {
+      "step": 7,
+      "family": "observation",
+      "rule": "flagd_dump",
+      "severity": "indirect",
+      "excerpt": "25%\": 0.25,             \"10%\": 0.1,             \"off\": 0           },           \"defaultVariant\": \"100%\"         },         \"paymentUnreachable\": {           \"description\": \"Pay"
+    },
+    {
+      "step": 8,
+      "family": "observation",
+      "rule": "armed_variant",
+      "severity": "direct",
+      "excerpt": "25%\": 0.25,             \"10%\": 0.1,             \"off\": 0           },           \"defaultVariant\": \"100%\"         },         \"paymentUnreachable\": {           \"description\": \"Payment s"
+    },
+    {
+      "step": 8,
+      "family": "observation",
+      "rule": "flagd_dump",
+      "severity": "indirect",
+      "excerpt": "25%\": 0.25,             \"10%\": 0.1,             \"off\": 0           },           \"defaultVariant\": \"100%\"         },         \"paymentUnreachable\": {           \"description\": \"Pay"
+    }
+  ]
+}

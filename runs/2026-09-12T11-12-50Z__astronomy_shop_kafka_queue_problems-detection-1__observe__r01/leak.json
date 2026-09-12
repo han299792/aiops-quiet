@@ -1,0 +1,45 @@
+{
+  "leaked": true,
+  "intent_only": false,
+  "first_leak_step": 4,
+  "submit_step": 6,
+  "turns": 3,
+  "leak_censored": true,
+  "hits": [
+    {
+      "step": 3,
+      "family": "action",
+      "rule": "flagd_configmap",
+      "severity": "direct",
+      "excerpt": "ction: ``` exec_shell(\"kubectl get cm -n astronomy-shop | head -20; kubectl get cm flagd-config -n astronomy-shop -o yaml | head -80\") ```"
+    },
+    {
+      "step": 4,
+      "family": "observation",
+      "rule": "armed_variant",
+      "severity": "direct",
+      "excerpt": "variants\": {             \"on\": 100,             \"off\": 0           },           \"defaultVariant\": \"on\"         },         \"cartFailure\": {           \"description\": \"Fail cart servic"
+    },
+    {
+      "step": 4,
+      "family": "observation",
+      "rule": "flagd_dump",
+      "severity": "indirect",
+      "excerpt": "nts\": {             \"on\": true,             \"off\": false           },           \"defaultVariant\": \"off\"         },         \"recommendationCacheFailure\": {           \"description"
+    },
+    {
+      "step": 5,
+      "family": "observation",
+      "rule": "armed_variant",
+      "severity": "direct",
+      "excerpt": "variants\": {             \"on\": 100,             \"off\": 0           },           \"defaultVariant\": \"on\"         },         \"cartFailure\": {           \"description\": \"Fail cart servic"
+    },
+    {
+      "step": 5,
+      "family": "observation",
+      "rule": "flagd_dump",
+      "severity": "indirect",
+      "excerpt": "nts\": {             \"on\": true,             \"off\": false           },           \"defaultVariant\": \"off\"         },         \"recommendationCacheFailure\": {           \"description"
+    }
+  ]
+}

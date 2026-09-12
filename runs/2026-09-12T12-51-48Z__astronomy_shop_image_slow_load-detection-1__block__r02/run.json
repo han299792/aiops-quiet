@@ -1,0 +1,10 @@
+{
+  "run_id": "2026-09-12T12-51-48Z__astronomy_shop_image_slow_load-detection-1__block__r02",
+  "problem_id": "astronomy_shop_image_slow_load-detection-1",
+  "arm": "block",
+  "replicate": 2,
+  "status": "ok",
+  "error": null,
+  "blocked_actions": 3,
+  "finished_at": "2026-09-12 12:54:50.202583+00:00"
+}

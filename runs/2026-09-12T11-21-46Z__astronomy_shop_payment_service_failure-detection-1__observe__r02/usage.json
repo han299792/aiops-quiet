@@ -1,0 +1,15 @@
+{
+  "run_id": "2026-09-12T11-21-46Z__astronomy_shop_payment_service_failure-detection-1__observe__r02",
+  "calls": 4,
+  "usage": {
+    "model": "claude-opus-5",
+    "input_tokens": 8,
+    "output_tokens": 220,
+    "cache_read_tokens": 5850,
+    "cache_write_tokens": 2384
+  },
+  "cost_usd": 0.023364999999999997,
+  "pricing_version": "anthropic-2026-06-24",
+  "campaign_spent_usd": 0.3905055,
+  "campaign_remaining_usd": 31.6094945
+}

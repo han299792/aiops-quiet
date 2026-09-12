@@ -1,0 +1,15 @@
+{
+  "run_id": "2026-09-12T12-49-14Z__astronomy_shop_kafka_queue_problems-detection-1__block__r02",
+  "calls": 9,
+  "usage": {
+    "model": "claude-opus-5",
+    "input_tokens": 18,
+    "output_tokens": 685,
+    "cache_read_tokens": 36915,
+    "cache_write_tokens": 13021
+  },
+  "cost_usd": 0.11705375,
+  "pricing_version": "anthropic-2026-06-24",
+  "campaign_spent_usd": 2.41843575,
+  "campaign_remaining_usd": 29.58156425
+}
