@@ -1,0 +1,115 @@
+# Isolated lab environment: a kind cluster inside a pod.
+#
+# WHY NOT JUST USE A NAMESPACE
+#
+# AIOpsLab's orchestrator runs this on every problem init:
+#
+#   kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml
+#   kubectl patch storageclass openebs-hostpath -p '{... is-default-class: "true"}'
+#
+# and this at the end of every run:
+#
+#   kubectl delete sc openebs-hostpath openebs-device
+#
+# This cluster currently has exactly one StorageClass -- local-storage, with no
+# default marked. A campaign would create a default that was never there,
+# sixty times, and delete it sixty times. It also installs Chaos Mesh
+# (CRDs + a MutatingAdmissionWebhook + a privileged DaemonSet) and its own
+# node-exporter DaemonSet, which would collide with the kube-prometheus-stack
+# node-exporter already running on all four nodes.
+#
+# None of that is namespace-scoped. A kind cluster inside a pod is: every CRD,
+# webhook, DaemonSet and StorageClass lives in this pod's filesystem, and
+# `kubectl delete -f dind-pod.yaml` removes all of it.
+#
+# WHY DinD RATHER THAN kind ON THE NODE
+#
+# kind needs docker or podman. sandbox-m1 has neither (only containerd,
+# nerdctl, ctr, crictl) and sudo requires a password, so neither can be
+# installed. Running the docker daemon inside a privileged pod is the
+# remaining path -- and it isolates better than installing docker on the host
+# would have.
+#
+# PLACEMENT
+#
+# Scheduled to sandbox-w2, the emptiest worker (7% memory requested).
+# Deliberately NOT sandbox-m1: that is the control plane and also the node the
+# operator sshes into.
+#
+#   kubectl apply -f env/dind-pod.yaml
+#   kubectl exec -it -n aiopslab-lab aiopslab-lab -- bash
+#   # then: bash /work/bootstrap.sh   (see env/bootstrap-dind.sh)
+#
+# Results live on an emptyDir and die with the pod. Copy them out:
+#   kubectl cp aiopslab-lab/aiopslab-lab:/work/aiops-quiet/runs ./runs
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aiopslab-lab
+  labels:
+    # Explicit: this namespace hosts a privileged pod on purpose. Stating it
+    # means a later cluster-wide PodSecurity rollout fails loudly here rather
+    # than silently refusing to schedule.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: aiopslab-lab
+  namespace: aiopslab-lab
+  labels:
+    app: aiopslab-lab
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    kubernetes.io/hostname: sandbox-w2
+  containers:
+    - name: dind
+      image: docker:27-dind
+      securityContext:
+        privileged: true # required: the docker daemon needs it
+      env:
+        # TLS between the client and daemon is pointless when both are in
+        # this container, and setting it up costs a startup race.
+        - name: DOCKER_TLS_CERTDIR
+          value: ""
+      args:
+        - --storage-driver=overlay2
+      resources:
+        requests:
+          memory: 16Gi
+          cpu: "4"
+        limits:
+          # astronomy-shop alone sums to ~6.4GiB of container limits, plus the
+          # kind control plane, Prometheus, Jaeger and Chaos Mesh on top.
+          memory: 26Gi
+          cpu: "10"
+      volumeMounts:
+        - name: docker-data
+          mountPath: /var/lib/docker
+        - name: work
+          mountPath: /work
+        # kind writes cgroup mounts here; without a writable emptyDir the
+        # control-plane container fails to start under cgroup v2.
+        - name: modules
+          mountPath: /lib/modules
+          readOnly: true
+      readinessProbe:
+        exec:
+          command: ["docker", "info"]
+        initialDelaySeconds: 15
+        periodSeconds: 10
+  volumes:
+    - name: docker-data
+      emptyDir:
+        sizeLimit: 80Gi
+    - name: work
+      emptyDir:
+        sizeLimit: 20Gi
+    - name: modules
+      hostPath:
+        path: /lib/modules
+        type: Directory
