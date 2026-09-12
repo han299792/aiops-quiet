@@ -126,19 +126,27 @@ otel 피처 플래그 장애는 **파드가 Ready를 유지한다** — 주입�
 | `max_steps` | 파일럿 후 확정 → 여기 기록 | |
 | 관측 창 | **20분** | 실측 후 확정 (§9). payment 8 span/min에서 10% 용량 탐지율 84% |
 | helm 차트 | **`0.37.2` 핀** | 핀이 없으면 최신(0.41.0)이 설치돼 재현이 깨진다 |
-| 예산 | **$40** | 초과 시 즉시 중단, 거기까지를 결과로 |
+| 예산 | **$32** (₩50,000) | 초과 시 즉시 중단, 거기까지를 결과로. 비용 근거는 [5-COST.md](5-COST.md) |
 
 ## 6. 격리
 
-기존 워크로드가 도는 클러스터를 **건드리지 않는다.** 노드 하나에서 `kind`를 직접 돌린다.
+기존 워크로드가 도는 클러스터를 **건드리지 않는다.** privileged 파드 안에서
+`kind`를 돌린다 (`env/dind-pod.yaml`).
 
 **근거 한 줄**: 오케스트레이터가 회차마다
 `kubectl patch storageclass openebs-hostpath ... is-default-class: true` 를 하고
 `start_problem` 끝에 `kubectl delete sc openebs-hostpath openebs-device` 를 한다.
-→ **클러스터의 기본 StorageClass를 지웠다 만든다.** StorageClass를 명시하지 않은
-기존 PVC는 그때부터 다른 프로비저너로 붙는다. **네임스페이스 격리로는 못 막는다.**
+→ **클러스터의 기본 StorageClass를 지웠다 만든다.** 그리고 이 클러스터에는
+StorageClass가 `local-storage` 하나뿐이고 **기본값 표시가 없다** — 없던 기본값을
+60번 만들었다 지우는 셈이다. 여기에 Chaos Mesh(CRD + 웹훅 + privileged DaemonSet)와
+자체 node-exporter가 더해지는데, 4노드 전체에 kube-prometheus-stack의 node-exporter가
+이미 돌고 있다. **어느 것도 네임스페이스 범위가 아니다.**
 
-kind는 그 노드의 도커 컨테이너로 뜬다. CRD·웹훅·DaemonSet이 전부 그 안에 갇힌다.
+**왜 노드에 kind를 직접 안 깔았나**: 대상 노드에 docker도 podman도 없고
+(containerd·nerdctl·ctr뿐) sudo가 비번을 요구해 설치가 불가능하다. cgroup v2와
+PodSecurity 무제한, cluster-admin은 되므로 DinD가 남은 경로였고 — 격리는 오히려 낫다.
+CRD·웹훅·DaemonSet·StorageClass가 전부 파드 파일시스템 안에 갇히고
+`kubectl delete -f env/dind-pod.yaml` 한 줄로 사라진다.
 
 ## 7. 분석 규칙 (데이터 보기 전 고정)
 
@@ -180,5 +188,7 @@ kind는 그 노드의 도커 컨테이너로 뜬다. CRD·웹훅·DaemonSet이 �
 |---|---|---|---|
 | 2026-09-09 | v5 최초 작성 (명시성 카탈로그) | — | 없음 (레포 코드만) |
 | 2026-09-09 | 창 길이 확정 보류 | 검정력 시뮬레이션이 미측정 파라미터 2개에 좌우됨을 보임 | **합성 데이터만** |
-| 2026-09-12 | **창 길이 20분 확정** | 실측 3값(charge 100%, 기저 에러율 0%, payment 8 span/min)을 검정력 시뮬레이션에 투입. 10% 용량에서 84% | **텔레메트리 실측만.** 에이전트 실행 0회, 결과 데이터 없음 |
 | 2026-09-11 | **v6 — 주제를 정답 누출 측정으로 교체** | 카탈로그는 임계 보정이 선행돼야 하고 실패 지점이 많다. 누출 측정은 선행조건이 없고 어느 결과든 보고 가능 | **없음.** 레포 코드와 업스트림 이슈 목록만 |
+| 2026-09-12 | 격리 방식을 노드 kind → DinD 파드로 | 대상 노드에 docker/podman 없고 sudo 불가 | 클러스터 구성 조사만 |
+| 2026-09-12 | 예산 $40 → **$32** (₩50,000) | 사용자 지정 한도 | 없음 |
+| 2026-09-12 | **관측 창 20분 확정** | 실측 3값(charge 100%, 기저 에러율 0%, payment 8 span/min)을 검정력 시뮬레이션에 투입 → 10% 용량 탐지율 84% | **텔레메트리 실측만.** 에이전트 실행 0회, 결과 데이터 없음 |
