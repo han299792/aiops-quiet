@@ -119,7 +119,7 @@ kubectl exec -it -n aiopslab-lab aiopslab-lab -- sh -c '
 kubectl exec -it -n aiopslab-lab aiopslab-lab -- bash
 cd /work/aiops-quiet
 
-./.venv/bin/python -m pytest tests -q          # 240 통과해야 한다
+./.venv/bin/python -m pytest tests -q          # 247 통과해야 한다
 ./.venv/bin/python -m quiet.harness.preflight --namespace astronomy-shop
 ```
 

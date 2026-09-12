@@ -135,7 +135,7 @@ kubectl get events -n <ns>               # 주입 시각까지
 - **ACTION** (`role=="assistant"`) — 시도. 의도의 증거
 - **OBSERVATION** (`role=="env"`) — 유입. 누출의 증거
 
-규칙은 `quiet/harness/leak.py`에 있고 테스트 16개가 고정한다.
+규칙은 `quiet/harness/leak.py`에 있고 테스트 24개가 고정한다.
 **실행 전에 커밋된 규칙만 쓴다** — 트레이스를 보고 규칙을 추가하면 그건 사후 조작이다.
 
 ## 2.6 ★ 논문 자신의 측정이 이 가설을 지지한다
