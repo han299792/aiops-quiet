@@ -17,14 +17,14 @@ from quiet.harness.rundir import RunDir
 
 def make_run(root, rid, *, arm="observe", problem="astronomy_shop_payment_service_failure-detection-1",
              correct=True, leaked=False, censored=False, submit=5, cost=0.02,
-             status="ok"):
+             status="ok", grade=None):
     rd = RunDir.create(root, rid)
     rd.write("leak.json", {"leaked": leaked, "intent_only": False,
                            "leak_censored": censored, "submit_step": submit, "turns": 4,
                            "first_leak_step": 3 if leaked else None, "hits": []})
     rd.write("usage.json", {"cost_usd": cost})
     rd.write("session.json", {"results": {"Detection Accuracy":
-                                          "Correct" if correct else "Incorrect"}})
+                                          grade or ("Correct" if correct else "Incorrect")}})
     rd.finalize({"run_id": rid, "problem_id": problem, "arm": arm,
                  "replicate": 1, "status": status, "error": None})
     return rd
@@ -158,3 +158,23 @@ class TestBlockEfficacy:
             make_run(tmp_path, f"b{i}", arm="block")
         text = report(tmp_path)
         assert text.index("block efficacy") < text.index("H2 accuracy")
+
+
+class TestInvalidFormat:
+    """An unparseable submission is not the same failure as a wrong answer,
+    and folding them together inflates whatever the arm is blamed for."""
+
+    def test_it_is_counted_as_not_correct(self, tmp_path):
+        make_run(tmp_path, "r1", grade="Invalid Format")
+        runs, _ = load(tmp_path)
+        assert runs[0].correct is False and runs[0].grade == "Invalid Format"
+
+    def test_it_is_called_out_separately(self, tmp_path):
+        make_run(tmp_path, "r1", grade="Invalid Format", arm="block")
+        make_run(tmp_path, "r2", correct=True, arm="block")
+        text = report(tmp_path)
+        assert "Invalid Format" in text and "block 1" in text
+
+    def test_silence_when_there_are_none(self, tmp_path):
+        make_run(tmp_path, "r1")
+        assert "Invalid Format" not in report(tmp_path)

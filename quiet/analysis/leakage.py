@@ -44,6 +44,11 @@ class Run:
     arm: str
     status: str
     correct: bool | None
+    #: Raw grade string. "Invalid Format" means the agent never produced a
+    #: parseable answer, which is not the same failure as answering wrongly
+    #: -- reported separately so a blocked arm's accuracy drop is not
+    #: silently inflated by submissions the parser rejected.
+    grade: str | None
     leaked: bool
     intent_only: bool
     censored: bool
@@ -83,6 +88,7 @@ def load(root: Path) -> tuple[list[Run], list[dict]]:
             arm=marker["arm"],
             status=marker["status"],
             correct=None if acc is None else (acc == "Correct"),
+            grade=acc,
             leaked=bool(leak.get("leaked")),
             intent_only=bool(leak.get("intent_only")),
             censored=bool(leak.get("leak_censored")),
@@ -227,6 +233,15 @@ def report(root: Path) -> str:
           f"| {rate(rs, lambda r: r.intent_only)} "
           f"| {rate(rs, lambda r: r.correct is True)} "
           f"| {rate(clean, lambda r: r.correct is True)} |")
+    w("")
+    invalid = [r for r in runs if r.grade == "Invalid Format"]
+    if invalid:
+        w("")
+        w(f"**{len(invalid)} run(s) graded `Invalid Format`** -- the agent never")
+        w("produced a parseable submission. Counted as not-correct above, which is")
+        w("the conservative reading, but it is a different failure from answering")
+        w("wrongly. By arm: " + ", ".join(
+            f"{a} {sum(1 for r in invalid if r.arm == a)}" for a in arms))
     w("")
     w("`clean only` = runs where the answer never arrived, or arrived after the")
     w("submission. Leaky runs are NOT dropped (PREREG 4.1) -- both columns are")

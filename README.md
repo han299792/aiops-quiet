@@ -24,7 +24,7 @@ flagd ConfigMap의 `defaultVariant`, Chaos Mesh CR. 그리고 `exec_shell`은
 
 | | |
 |---|---|
-| 측정 도구 | **완성.** 247개 테스트, 클러스터·네트워크·API키 없이 통과 |
+| 측정 도구 | **완성.** 249개 테스트, 클러스터·네트워크·API키 없이 통과 |
 | 환경 | sb1의 격리 kind 클러스터(DinD). **다른 워크로드는 안 건드린다** |
 | 파일럿 | **3/3 누출.** astronomy-shop 세 문제 전부 동일 패턴 |
 | 본 실행 | **0/60.** 사전등록한 캠페인은 아직 안 돌렸다 |
@@ -81,7 +81,7 @@ SWE-bench에서 에이전트가 `git log --all`로 정답 커밋을 읽는 것�
 git clone --recurse-submodules https://github.com/han299792/aiops-quiet.git
 cd aiops-quiet
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m pytest tests -q          # 247, 클러스터 불필요
+.venv/bin/python -m pytest tests -q          # 249, 클러스터 불필요
 ```
 
 클러스터에서 (절차 전체는 [`RUNBOOK.md`](RUNBOOK.md)):
